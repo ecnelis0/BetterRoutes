@@ -92,6 +92,9 @@ const TOUR_TARGET_SECONDS = 50;
 const TOUR_MIN_SECONDS = 18;
 const TOUR_MAX_SECONDS = 100;
 
+/** Playback speeds offered in the transport bar. */
+const TOUR_SPEEDS = [1, 2, 3] as const;
+
 function tourDurationSeconds(totalMeters: number): number {
   const scaled = TOUR_TARGET_SECONDS * Math.sqrt(Math.max(1, totalMeters) / 5000);
   return Math.min(TOUR_MAX_SECONDS, Math.max(TOUR_MIN_SECONDS, scaled));
@@ -125,6 +128,10 @@ export default function Route3DTour({
 
   const [progress, setProgress] = useState(0);
   const [playing, setPlaying] = useState(false);
+  // Playback speed. Read through a ref inside the frame loop so changing it
+  // mid-tour speeds up from where the camera is, without restarting playback.
+  const [speed, setSpeed] = useState(1);
+  const speedRef = useRef(1);
   const [ready, setReady] = useState(false);
   const [fatalError, setFatalError] = useState<string | null>(null);
   const [tileWarning, setTileWarning] = useState(false);
@@ -413,7 +420,7 @@ export default function Route3DTour({
     lastTickRef.current = performance.now();
 
     const tick = (now: number) => {
-      const dt = (now - lastTickRef.current) / 1000;
+      const dt = ((now - lastTickRef.current) / 1000) * speedRef.current;
       lastTickRef.current = now;
 
       elapsedRef.current += dt;
@@ -705,6 +712,24 @@ export default function Route3DTour({
           onChange={(e) => scrub(Number(e.target.value))}
           className="h-1 flex-1 cursor-pointer accent-white"
         />
+        <div className="flex shrink-0 rounded-full bg-white/10 p-0.5" role="group" aria-label="Tour speed">
+          {TOUR_SPEEDS.map((x) => (
+            <button
+              key={x}
+              type="button"
+              onClick={() => {
+                speedRef.current = x;
+                setSpeed(x);
+              }}
+              aria-pressed={speed === x}
+              className={`rounded-full px-2 py-0.5 text-[11px] tabular-nums transition-colors ${
+                speed === x ? "bg-white text-slate-900" : "text-slate-200 hover:bg-white/10"
+              }`}
+            >
+              {x}×
+            </button>
+          ))}
+        </div>
         <span className="w-24 shrink-0 text-right text-[11px] tabular-nums text-slate-200">
           {miDone.toFixed(2)} / {miTotal.toFixed(2)} mi
         </span>
