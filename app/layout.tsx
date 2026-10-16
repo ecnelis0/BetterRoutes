@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "No Roll Models - Safer Bike Routing",
+  title: "BetterRoutes - Safer Bike Routing",
   description:
     "Bike routing that accounts for crash history, bike lane quality, and highway exposure - not just travel time.",
 };

@@ -33,7 +33,7 @@ import { COVERAGE_BOUNDS } from "@/lib/data/coverage";
 export const runtime = "nodejs";
 
 const RESOURCE = "https://data.sfgov.org/resource/ynuv-fyni.json";
-const UA = "no-roll-models/0.1 (bike safety routing)";
+const UA = "BetterRoutes/0.1 (bike safety routing)";
 
 /** Guards against a pathological request pulling half the city. */
 const MAX_SPAN_DEGREES = 0.08; // ~9km

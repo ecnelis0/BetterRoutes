@@ -27,7 +27,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, "..");
 const Z = 14;
 const TILE_URL = (z, x, y) => `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`;
-const UA = "no-roll-models/0.1 (bike safety routing; dev data fetch)";
+const UA = "BetterRoutes/0.1 (bike safety routing; dev data fetch)";
 
 function lngToTileX(lng, z) {
   return ((lng + 180) / 360) * 2 ** z;

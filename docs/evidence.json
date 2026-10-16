@@ -1,0 +1,1591 @@
+[
+ {
+  "from": {
+   "q": "Ocean Beach",
+   "label": "Ocean Beach, Sunset District, San Francisco, California, United States",
+   "lat": 37.7561513,
+   "lng": -122.510185
+  },
+  "to": {
+   "q": "Ferry Building",
+   "label": "San Francisco Ferry Building, 1, The Embarcadero, Financial District, San Francisco, California, 94111, United States",
+   "lat": 37.7955487,
+   "lng": -122.3934746
+  },
+  "routes": {
+   "fastest": {
+    "mi": 7.76,
+    "min": 70,
+    "danger": 62.1,
+    "worst": 100,
+    "flaggedPct": 23.9,
+    "protectedPct": 10.6,
+    "lights": 35,
+    "climbFt": 371,
+    "steepest": 5.6,
+    "areas": [
+     "SoMa (South of Market) (Severe, 1.15 mi)",
+     "Downtown (High, 0.87 mi)",
+     "Civic Center (Severe, 0.48 mi)",
+     "Tenderloin (Severe, 0.35 mi)",
+     "Union Square (High, 0.32 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "balanced": {
+    "mi": 9.48,
+    "min": 89,
+    "danger": 37.4,
+    "worst": 85.2,
+    "flaggedPct": 0.0,
+    "protectedPct": 27.0,
+    "lights": 17,
+    "climbFt": 1027,
+    "steepest": 21.8,
+    "areas": [],
+    "label": "Safest"
+   },
+   "safest": {
+    "mi": 10.99,
+    "min": 96,
+    "danger": 31.9,
+    "worst": 76.6,
+    "flaggedPct": 0.0,
+    "protectedPct": 53.1,
+    "lights": 24,
+    "climbFt": 679,
+    "steepest": 11.6,
+    "areas": [],
+    "label": "Safest + bike lanes"
+   },
+   "hills:fastest": {
+    "mi": 7.92,
+    "min": 73,
+    "danger": 62.8,
+    "worst": 100,
+    "flaggedPct": 35.3,
+    "protectedPct": 20.7,
+    "lights": 49,
+    "climbFt": 315,
+    "steepest": 5.6,
+    "areas": [
+     "SoMa (South of Market) (Severe, 1.05 mi)",
+     "Downtown (High, 0.88 mi)",
+     "Western Addition (High, 0.86 mi)",
+     "Tenderloin (Severe, 0.56 mi)",
+     "Civic Center (Severe, 0.53 mi)",
+     "Union Square (High, 0.32 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "hills:balanced": {
+    "mi": 9.22,
+    "min": 82,
+    "danger": 46.1,
+    "worst": 85.8,
+    "flaggedPct": 0.0,
+    "protectedPct": 17.2,
+    "lights": 30,
+    "climbFt": 518,
+    "steepest": 8.6,
+    "areas": [],
+    "label": "Safest"
+   },
+   "hills:safest": {
+    "mi": 10.99,
+    "min": 95,
+    "danger": 33,
+    "worst": 76.6,
+    "flaggedPct": 0.0,
+    "protectedPct": 51.8,
+    "lights": 25,
+    "climbFt": 571,
+    "steepest": 10.1,
+    "areas": [],
+    "label": "Safest + bike lanes"
+   },
+   "lights:fastest": {
+    "mi": 8.99,
+    "min": 79,
+    "danger": 52,
+    "worst": 90.3,
+    "flaggedPct": 0.4,
+    "protectedPct": 6.1,
+    "lights": 13,
+    "climbFt": 656,
+    "steepest": 21.8,
+    "areas": [
+     "Chinatown (High, 0.03 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "lights:balanced": {
+    "mi": 9.36,
+    "min": 87,
+    "danger": 39.6,
+    "worst": 85.2,
+    "flaggedPct": 0.0,
+    "protectedPct": 20.0,
+    "lights": 12,
+    "climbFt": 1017,
+    "steepest": 21.8,
+    "areas": [],
+    "label": "Safest"
+   },
+   "lights:safest": {
+    "mi": 10.99,
+    "min": 96,
+    "danger": 32,
+    "worst": 76.6,
+    "flaggedPct": 0.0,
+    "protectedPct": 53.1,
+    "lights": 23,
+    "climbFt": 686,
+    "steepest": 11.6,
+    "areas": [],
+    "label": "Safest + bike lanes"
+   }
+  },
+  "model": "gbt-baseline-2026-10-05"
+ },
+ {
+  "from": {
+   "q": "Pacific Heights",
+   "label": "Pacific Heights, San Francisco, California, 94115, United States",
+   "lat": 37.7927171,
+   "lng": -122.4356445
+  },
+  "to": {
+   "q": "Mission Street & 17th Street",
+   "label": "Bay Wheels, 17th Street, Mission, San Francisco, California, 94110, United States",
+   "lat": 37.7637355,
+   "lng": -122.4155337
+  },
+  "routes": {
+   "fastest": {
+    "mi": 2.81,
+    "min": 25,
+    "danger": 74.6,
+    "worst": 100,
+    "flaggedPct": 53.7,
+    "protectedPct": 1.5,
+    "lights": 20,
+    "climbFt": 30,
+    "steepest": 2,
+    "areas": [
+     "Western Addition (High, 0.93 mi)",
+     "Fillmore (High, 0.71 mi)",
+     "Mission District (High, 0.44 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "balanced": {
+    "mi": 2.97,
+    "min": 29,
+    "danger": 62.5,
+    "worst": 86.2,
+    "flaggedPct": 44.7,
+    "protectedPct": 25.7,
+    "lights": 23,
+    "climbFt": 180,
+    "steepest": 12.5,
+    "areas": [
+     "Western Addition (High, 0.65 mi)",
+     "Mission District (High, 0.59 mi)",
+     "Fillmore (High, 0.36 mi)"
+    ],
+    "label": "Safest \u00b7 best effort"
+   },
+   "safest": {
+    "mi": 4.49,
+    "min": 42,
+    "danger": 56.8,
+    "worst": 78.3,
+    "flaggedPct": 54.0,
+    "protectedPct": 27.2,
+    "lights": 26,
+    "climbFt": 236,
+    "steepest": 12,
+    "areas": [
+     "Mission District (High, 1.69 mi)",
+     "Western Addition (High, 0.66 mi)",
+     "Fillmore (High, 0.33 mi)"
+    ],
+    "label": "Safest + bike lanes \u00b7 best effort"
+   },
+   "hills:fastest": {
+    "mi": 3.0,
+    "min": 26,
+    "danger": 74.8,
+    "worst": 100,
+    "flaggedPct": 56.1,
+    "protectedPct": 1.4,
+    "lights": 20,
+    "climbFt": 13,
+    "steepest": 0.9,
+    "areas": [
+     "Western Addition (High, 1.14 mi)",
+     "Fillmore (High, 0.80 mi)",
+     "Mission District (High, 0.44 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "hills:balanced": {
+    "mi": 3.09,
+    "min": 29,
+    "danger": 65.6,
+    "worst": 86.2,
+    "flaggedPct": 52.3,
+    "protectedPct": 27.4,
+    "lights": 28,
+    "climbFt": 49,
+    "steepest": 4.4,
+    "areas": [
+     "Western Addition (High, 0.65 mi)",
+     "Fillmore (High, 0.64 mi)",
+     "Mission District (High, 0.59 mi)"
+    ],
+    "label": "Safest \u00b7 best effort"
+   },
+   "hills:safest": {
+    "mi": 4.5,
+    "min": 42,
+    "danger": 57.8,
+    "worst": 78.3,
+    "flaggedPct": 53.8,
+    "protectedPct": 27.2,
+    "lights": 28,
+    "climbFt": 171,
+    "steepest": 12,
+    "areas": [
+     "Mission District (High, 1.69 mi)",
+     "Western Addition (High, 0.66 mi)",
+     "Fillmore (High, 0.33 mi)"
+    ],
+    "label": "Safest + bike lanes \u00b7 best effort"
+   },
+   "lights:fastest": {
+    "mi": 3.11,
+    "min": 28,
+    "danger": 71.4,
+    "worst": 100,
+    "flaggedPct": 46.3,
+    "protectedPct": 2.4,
+    "lights": 11,
+    "climbFt": 184,
+    "steepest": 13.4,
+    "areas": [
+     "Western Addition (High, 0.90 mi)",
+     "Fillmore (High, 0.62 mi)",
+     "Mission District (High, 0.44 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "lights:balanced": {
+    "mi": 2.97,
+    "min": 28,
+    "danger": 61,
+    "worst": 85.9,
+    "flaggedPct": 50.9,
+    "protectedPct": 5.7,
+    "lights": 18,
+    "climbFt": 154,
+    "steepest": 13.4,
+    "areas": [
+     "Western Addition (High, 0.90 mi)",
+     "Fillmore (High, 0.62 mi)",
+     "Mission District (High, 0.51 mi)"
+    ],
+    "label": "Safest \u00b7 best effort"
+   },
+   "lights:safest": {
+    "mi": 4.49,
+    "min": 42,
+    "danger": 56.8,
+    "worst": 78.3,
+    "flaggedPct": 54.0,
+    "protectedPct": 27.2,
+    "lights": 26,
+    "climbFt": 236,
+    "steepest": 12,
+    "areas": [
+     "Mission District (High, 1.69 mi)",
+     "Western Addition (High, 0.66 mi)",
+     "Fillmore (High, 0.33 mi)"
+    ],
+    "label": "Safest + bike lanes \u00b7 best effort"
+   }
+  },
+  "model": "gbt-baseline-2026-10-05"
+ },
+ {
+  "from": {
+   "q": "Marina Green",
+   "label": "Marina Green, Marina District, San Francisco, California, United States",
+   "lat": 37.8066027,
+   "lng": -122.4391166
+  },
+  "to": {
+   "q": "Dolores Park",
+   "label": "Mission Dolores Park, 19th Street, Castro District, Mission, San Francisco, California, 94114, United States",
+   "lat": 37.7597203,
+   "lng": -122.4271323
+  },
+  "routes": {
+   "fastest": {
+    "mi": 3.68,
+    "min": 37,
+    "danger": 56.6,
+    "worst": 85.9,
+    "flaggedPct": 27.2,
+    "protectedPct": 0.9,
+    "lights": 15,
+    "climbFt": 469,
+    "steepest": 17,
+    "areas": [
+     "Western Addition (High, 0.90 mi)",
+     "Fillmore (High, 0.62 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "balanced": {
+    "mi": 3.74,
+    "min": 40,
+    "danger": 53.2,
+    "worst": 86.2,
+    "flaggedPct": 19.9,
+    "protectedPct": 23.5,
+    "lights": 24,
+    "climbFt": 492,
+    "steepest": 20.2,
+    "areas": [
+     "Western Addition (High, 0.65 mi)",
+     "Fillmore (High, 0.36 mi)"
+    ],
+    "label": "Safest"
+   },
+   "safest": {
+    "mi": 4.27,
+    "min": 43,
+    "danger": 45.3,
+    "worst": 78.3,
+    "flaggedPct": 17.1,
+    "protectedPct": 18.3,
+    "lights": 19,
+    "climbFt": 515,
+    "steepest": 19.2,
+    "areas": [
+     "Western Addition (High, 0.66 mi)",
+     "Fillmore (High, 0.33 mi)"
+    ],
+    "label": "Safest + bike lanes"
+   },
+   "hills:fastest": {
+    "mi": 4.84,
+    "min": 49,
+    "danger": 59.2,
+    "worst": 90,
+    "flaggedPct": 31.6,
+    "protectedPct": 51.9,
+    "lights": 41,
+    "climbFt": 322,
+    "steepest": 7.5,
+    "areas": [
+     "Mission District (High, 0.83 mi)",
+     "Civic Center (Severe, 0.58 mi)",
+     "Tenderloin (Severe, 0.22 mi)",
+     "SoMa (South of Market) (Severe, 0.03 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "hills:balanced": {
+    "mi": 5.92,
+    "min": 57,
+    "danger": 44.1,
+    "worst": 78.7,
+    "flaggedPct": 0.0,
+    "protectedPct": 22.9,
+    "lights": 20,
+    "climbFt": 607,
+    "steepest": 15,
+    "areas": [],
+    "label": "Safest"
+   },
+   "hills:safest": {
+    "mi": 5.93,
+    "min": 57,
+    "danger": 41.6,
+    "worst": 73.4,
+    "flaggedPct": 0.0,
+    "protectedPct": 24.1,
+    "lights": 17,
+    "climbFt": 653,
+    "steepest": 15,
+    "areas": [],
+    "label": "Safest + bike lanes"
+   },
+   "lights:fastest": {
+    "mi": 3.73,
+    "min": 37,
+    "danger": 56.4,
+    "worst": 85.9,
+    "flaggedPct": 26.8,
+    "protectedPct": 0.9,
+    "lights": 13,
+    "climbFt": 486,
+    "steepest": 18.9,
+    "areas": [
+     "Western Addition (High, 0.90 mi)",
+     "Fillmore (High, 0.62 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "lights:balanced": {
+    "mi": 4.15,
+    "min": 41,
+    "danger": 47.4,
+    "worst": 78.3,
+    "flaggedPct": 17.6,
+    "protectedPct": 7.6,
+    "lights": 13,
+    "climbFt": 522,
+    "steepest": 19.2,
+    "areas": [
+     "Western Addition (High, 0.66 mi)",
+     "Fillmore (High, 0.33 mi)"
+    ],
+    "label": "Safest"
+   },
+   "lights:safest": {
+    "mi": 4.25,
+    "min": 42,
+    "danger": 45,
+    "worst": 78.3,
+    "flaggedPct": 17.2,
+    "protectedPct": 15.0,
+    "lights": 15,
+    "climbFt": 528,
+    "steepest": 19.2,
+    "areas": [
+     "Western Addition (High, 0.66 mi)",
+     "Fillmore (High, 0.33 mi)"
+    ],
+    "label": "Safest + bike lanes"
+   }
+  },
+  "model": "gbt-baseline-2026-10-05"
+ },
+ {
+  "from": {
+   "q": "Noe Valley",
+   "label": "Noe Valley, Mission, San Francisco, California, United States",
+   "lat": 37.7515906,
+   "lng": -122.4320814
+  },
+  "to": {
+   "q": "North Beach",
+   "label": "North Beach, San Francisco, California, 94133, United States",
+   "lat": 37.8011749,
+   "lng": -122.4090021
+  },
+  "routes": {
+   "fastest": {
+    "mi": 4.27,
+    "min": 43,
+    "danger": 71,
+    "worst": 100,
+    "flaggedPct": 45.2,
+    "protectedPct": 32.9,
+    "lights": 33,
+    "climbFt": 351,
+    "steepest": 13.6,
+    "areas": [
+     "SoMa (South of Market) (Severe, 1.17 mi)",
+     "Downtown (High, 0.70 mi)",
+     "Civic Center (Severe, 0.48 mi)",
+     "Chinatown (High, 0.46 mi)",
+     "Union Square (High, 0.45 mi)",
+     "Tenderloin (Severe, 0.35 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "balanced": {
+    "mi": 4.81,
+    "min": 52,
+    "danger": 51.9,
+    "worst": 86.2,
+    "flaggedPct": 15.5,
+    "protectedPct": 8.8,
+    "lights": 26,
+    "climbFt": 810,
+    "steepest": 15.5,
+    "areas": [
+     "Western Addition (High, 0.65 mi)",
+     "Fillmore (High, 0.36 mi)"
+    ],
+    "label": "Safest"
+   },
+   "safest": {
+    "mi": 5.04,
+    "min": 53,
+    "danger": 48.5,
+    "worst": 78.3,
+    "flaggedPct": 14.5,
+    "protectedPct": 1.3,
+    "lights": 22,
+    "climbFt": 814,
+    "steepest": 15.3,
+    "areas": [
+     "Western Addition (High, 0.66 mi)",
+     "Fillmore (High, 0.33 mi)"
+    ],
+    "label": "Safest + bike lanes"
+   },
+   "hills:fastest": {
+    "mi": 4.58,
+    "min": 44,
+    "danger": 72.9,
+    "worst": 100,
+    "flaggedPct": 64.2,
+    "protectedPct": 41.1,
+    "lights": 42,
+    "climbFt": 138,
+    "steepest": 7.2,
+    "areas": [
+     "SoMa (South of Market) (Severe, 1.17 mi)",
+     "Mission District (High, 1.01 mi)",
+     "Downtown (High, 0.70 mi)",
+     "Civic Center (Severe, 0.48 mi)",
+     "Chinatown (High, 0.46 mi)",
+     "Union Square (High, 0.45 mi)",
+     "Tenderloin (Severe, 0.35 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "hills:balanced": {
+    "mi": 4.91,
+    "min": 49,
+    "danger": 68.5,
+    "worst": 86.2,
+    "flaggedPct": 19.6,
+    "protectedPct": 3.8,
+    "lights": 35,
+    "climbFt": 417,
+    "steepest": 9.6,
+    "areas": [
+     "Western Addition (High, 0.66 mi)",
+     "Fillmore (High, 0.30 mi)",
+     "Mission District (High, 0.28 mi)"
+    ],
+    "label": "Safest"
+   },
+   "hills:safest": {
+    "mi": 7.42,
+    "min": 71,
+    "danger": 45.9,
+    "worst": 75.5,
+    "flaggedPct": 0.0,
+    "protectedPct": 12.8,
+    "lights": 24,
+    "climbFt": 784,
+    "steepest": 12.9,
+    "areas": [],
+    "label": "Safest + bike lanes"
+   },
+   "lights:fastest": {
+    "mi": 4.97,
+    "min": 50,
+    "danger": 54,
+    "worst": 85.9,
+    "flaggedPct": 20.3,
+    "protectedPct": 2.9,
+    "lights": 14,
+    "climbFt": 699,
+    "steepest": 13.8,
+    "areas": [
+     "Western Addition (High, 0.90 mi)",
+     "Fillmore (High, 0.62 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "lights:balanced": {
+    "mi": 6.79,
+    "min": 69,
+    "danger": 44.8,
+    "worst": 73.5,
+    "flaggedPct": 0.0,
+    "protectedPct": 6.5,
+    "lights": 16,
+    "climbFt": 1096,
+    "steepest": 21,
+    "areas": [],
+    "label": "Safest"
+   },
+   "lights:safest": {
+    "mi": 6.87,
+    "min": 69,
+    "danger": 43.9,
+    "worst": 73.5,
+    "flaggedPct": 0.0,
+    "protectedPct": 13.1,
+    "lights": 23,
+    "climbFt": 958,
+    "steepest": 19.8,
+    "areas": [],
+    "label": "Safest + bike lanes"
+   }
+  },
+  "model": "gbt-baseline-2026-10-05"
+ },
+ {
+  "from": {
+   "q": "Grace Cathedral",
+   "label": "Grace Cathedral, The Great Stairs at Grace Cathedral, Lower Nob Hill, Nob Hill, San Francisco, California, 94108, United States",
+   "lat": 37.7918211,
+   "lng": -122.4134968
+  },
+  "to": {
+   "q": "Hayes Valley",
+   "label": "Hayes Valley, Civic Center, San Francisco, California, United States",
+   "lat": 37.7766853,
+   "lng": -122.4229361
+  },
+  "routes": {
+   "fastest": {
+    "mi": 1.46,
+    "min": 15,
+    "danger": 88.6,
+    "worst": 100,
+    "flaggedPct": 78.3,
+    "protectedPct": 11.8,
+    "lights": 18,
+    "climbFt": 43,
+    "steepest": 4.6,
+    "areas": [
+     "SoMa (South of Market) (Severe, 0.82 mi)",
+     "Tenderloin (Severe, 0.66 mi)",
+     "Civic Center (Severe, 0.56 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "balanced": {
+    "mi": 1.58,
+    "min": 17,
+    "danger": 69.9,
+    "worst": 88.8,
+    "flaggedPct": 0.0,
+    "protectedPct": 8.4,
+    "lights": 21,
+    "climbFt": 92,
+    "steepest": 7.5,
+    "areas": [],
+    "label": "Safest \u00b7 best effort"
+   },
+   "safest": {
+    "mi": 1.58,
+    "min": 17,
+    "danger": 69.9,
+    "worst": 88.8,
+    "flaggedPct": 0.0,
+    "protectedPct": 8.4,
+    "lights": 21,
+    "climbFt": 92,
+    "steepest": 7.5,
+    "areas": [],
+    "label": "Safest + bike lanes \u00b7 best effort"
+   },
+   "hills:fastest": {
+    "mi": 1.58,
+    "min": 16,
+    "danger": 69,
+    "worst": 100,
+    "flaggedPct": 44.4,
+    "protectedPct": 51.9,
+    "lights": 22,
+    "climbFt": 16,
+    "steepest": 4.6,
+    "areas": [
+     "Civic Center (Severe, 0.58 mi)",
+     "Tenderloin (Severe, 0.22 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "hills:balanced": {
+    "mi": 1.58,
+    "min": 17,
+    "danger": 69.9,
+    "worst": 88.8,
+    "flaggedPct": 0.0,
+    "protectedPct": 8.4,
+    "lights": 21,
+    "climbFt": 92,
+    "steepest": 7.5,
+    "areas": [],
+    "label": "Safest \u00b7 best effort"
+   },
+   "hills:safest": {
+    "mi": 1.58,
+    "min": 17,
+    "danger": 69.9,
+    "worst": 88.8,
+    "flaggedPct": 0.0,
+    "protectedPct": 8.4,
+    "lights": 21,
+    "climbFt": 92,
+    "steepest": 7.5,
+    "areas": [],
+    "label": "Safest + bike lanes \u00b7 best effort"
+   },
+   "lights:fastest": {
+    "mi": 1.46,
+    "min": 15,
+    "danger": 88.6,
+    "worst": 100,
+    "flaggedPct": 78.3,
+    "protectedPct": 11.8,
+    "lights": 18,
+    "climbFt": 43,
+    "steepest": 4.6,
+    "areas": [
+     "SoMa (South of Market) (Severe, 0.82 mi)",
+     "Tenderloin (Severe, 0.66 mi)",
+     "Civic Center (Severe, 0.56 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "lights:balanced": {
+    "mi": 1.58,
+    "min": 17,
+    "danger": 69.9,
+    "worst": 88.8,
+    "flaggedPct": 0.0,
+    "protectedPct": 8.4,
+    "lights": 21,
+    "climbFt": 92,
+    "steepest": 7.5,
+    "areas": [],
+    "label": "Safest \u00b7 best effort"
+   },
+   "lights:safest": {
+    "mi": 1.58,
+    "min": 17,
+    "danger": 69.9,
+    "worst": 88.8,
+    "flaggedPct": 0.0,
+    "protectedPct": 8.4,
+    "lights": 21,
+    "climbFt": 92,
+    "steepest": 7.5,
+    "areas": [],
+    "label": "Safest + bike lanes \u00b7 best effort"
+   }
+  },
+  "model": "gbt-baseline-2026-10-05"
+ },
+ {
+  "from": {
+   "q": "Chinatown",
+   "label": "Chinatown, San Francisco, California, United States",
+   "lat": 37.7943011,
+   "lng": -122.4063757
+  },
+  "to": {
+   "q": "Dolores Park",
+   "label": "Mission Dolores Park, 19th Street, Castro District, Mission, San Francisco, California, 94114, United States",
+   "lat": 37.7597203,
+   "lng": -122.4271323
+  },
+  "routes": {
+   "fastest": {
+    "mi": 3.15,
+    "min": 34,
+    "danger": 74.1,
+    "worst": 100,
+    "flaggedPct": 58.1,
+    "protectedPct": 39.2,
+    "lights": 31,
+    "climbFt": 279,
+    "steepest": 14.1,
+    "areas": [
+     "SoMa (South of Market) (Severe, 1.12 mi)",
+     "Union Square (High, 0.56 mi)",
+     "Civic Center (Severe, 0.49 mi)",
+     "Chinatown (High, 0.48 mi)",
+     "Downtown (High, 0.45 mi)",
+     "Tenderloin (Severe, 0.38 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "balanced": {
+    "mi": 3.61,
+    "min": 41,
+    "danger": 67,
+    "worst": 100,
+    "flaggedPct": 14.6,
+    "protectedPct": 19.7,
+    "lights": 37,
+    "climbFt": 505,
+    "steepest": 18.7,
+    "areas": [
+     "Chinatown (High, 0.53 mi)"
+    ],
+    "label": "Safest \u00b7 best effort"
+   },
+   "safest": {
+    "mi": 3.61,
+    "min": 41,
+    "danger": 67,
+    "worst": 100,
+    "flaggedPct": 14.6,
+    "protectedPct": 19.7,
+    "lights": 37,
+    "climbFt": 505,
+    "steepest": 18.7,
+    "areas": [
+     "Chinatown (High, 0.53 mi)"
+    ],
+    "label": "Safest + bike lanes \u00b7 best effort"
+   },
+   "hills:fastest": {
+    "mi": 3.63,
+    "min": 37,
+    "danger": 77.1,
+    "worst": 100,
+    "flaggedPct": 75.3,
+    "protectedPct": 40.2,
+    "lights": 35,
+    "climbFt": 184,
+    "steepest": 6.5,
+    "areas": [
+     "SoMa (South of Market) (Severe, 1.15 mi)",
+     "Downtown (High, 0.85 mi)",
+     "Mission District (High, 0.83 mi)",
+     "Civic Center (Severe, 0.49 mi)",
+     "Tenderloin (Severe, 0.38 mi)",
+     "Union Square (High, 0.32 mi)",
+     "Chinatown (High, 0.24 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "hills:balanced": {
+    "mi": 3.61,
+    "min": 42,
+    "danger": 68,
+    "worst": 100,
+    "flaggedPct": 15.9,
+    "protectedPct": 19.7,
+    "lights": 43,
+    "climbFt": 466,
+    "steepest": 14.1,
+    "areas": [
+     "Chinatown (High, 0.57 mi)"
+    ],
+    "label": "Safest \u00b7 best effort"
+   },
+   "hills:safest": {
+    "mi": 3.61,
+    "min": 42,
+    "danger": 68,
+    "worst": 100,
+    "flaggedPct": 15.9,
+    "protectedPct": 19.7,
+    "lights": 43,
+    "climbFt": 466,
+    "steepest": 14.1,
+    "areas": [
+     "Chinatown (High, 0.57 mi)"
+    ],
+    "label": "Safest + bike lanes \u00b7 best effort"
+   },
+   "lights:fastest": {
+    "mi": 3.65,
+    "min": 36,
+    "danger": 81.3,
+    "worst": 100,
+    "flaggedPct": 76.6,
+    "protectedPct": 9.2,
+    "lights": 23,
+    "climbFt": 272,
+    "steepest": 14.1,
+    "areas": [
+     "SoMa (South of Market) (Severe, 1.45 mi)",
+     "Mission District (High, 0.74 mi)",
+     "Union Square (High, 0.56 mi)",
+     "Chinatown (High, 0.48 mi)",
+     "Downtown (High, 0.45 mi)",
+     "Civic Center (Severe, 0.07 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "lights:balanced": {
+    "mi": 3.61,
+    "min": 41,
+    "danger": 67,
+    "worst": 100,
+    "flaggedPct": 14.6,
+    "protectedPct": 19.7,
+    "lights": 37,
+    "climbFt": 505,
+    "steepest": 18.7,
+    "areas": [
+     "Chinatown (High, 0.53 mi)"
+    ],
+    "label": "Safest \u00b7 best effort"
+   },
+   "lights:safest": {
+    "mi": 3.61,
+    "min": 41,
+    "danger": 67,
+    "worst": 100,
+    "flaggedPct": 14.6,
+    "protectedPct": 19.7,
+    "lights": 37,
+    "climbFt": 505,
+    "steepest": 18.7,
+    "areas": [
+     "Chinatown (High, 0.53 mi)"
+    ],
+    "label": "Safest + bike lanes \u00b7 best effort"
+   }
+  },
+  "model": "gbt-baseline-2026-10-05"
+ },
+ {
+  "from": {
+   "q": "Union Square",
+   "label": "Union Square, Tenderloin, San Francisco, California, United States",
+   "lat": 37.7879363,
+   "lng": -122.4075174
+  },
+  "to": {
+   "q": "Lower Haight",
+   "label": "Lower Haight, Western Addition, San Francisco, California, United States",
+   "lat": 37.7722602,
+   "lng": -122.4330181
+  },
+  "routes": {
+   "fastest": {
+    "mi": 2.09,
+    "min": 21,
+    "danger": 74,
+    "worst": 100,
+    "flaggedPct": 57.2,
+    "protectedPct": 30.2,
+    "lights": 16,
+    "climbFt": 184,
+    "steepest": 11.5,
+    "areas": [
+     "SoMa (South of Market) (Severe, 1.10 mi)",
+     "Tenderloin (Severe, 0.59 mi)",
+     "Civic Center (Severe, 0.49 mi)",
+     "Union Square (High, 0.28 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "balanced": {
+    "mi": 2.69,
+    "min": 30,
+    "danger": 68,
+    "worst": 95.2,
+    "flaggedPct": 13.5,
+    "protectedPct": 1.7,
+    "lights": 25,
+    "climbFt": 348,
+    "steepest": 10.3,
+    "areas": [
+     "Union Square (High, 0.36 mi)",
+     "SoMa (South of Market) (Severe, 0.12 mi)"
+    ],
+    "label": "Safest \u00b7 best effort"
+   },
+   "safest": {
+    "mi": 2.69,
+    "min": 30,
+    "danger": 68,
+    "worst": 95.2,
+    "flaggedPct": 13.5,
+    "protectedPct": 1.7,
+    "lights": 25,
+    "climbFt": 348,
+    "steepest": 10.3,
+    "areas": [
+     "Union Square (High, 0.36 mi)",
+     "SoMa (South of Market) (Severe, 0.12 mi)"
+    ],
+    "label": "Safest + bike lanes \u00b7 best effort"
+   },
+   "hills:fastest": {
+    "mi": 2.3,
+    "min": 23,
+    "danger": 71.3,
+    "worst": 100,
+    "flaggedPct": 51.8,
+    "protectedPct": 50.3,
+    "lights": 20,
+    "climbFt": 144,
+    "steepest": 5.8,
+    "areas": [
+     "SoMa (South of Market) (Severe, 1.10 mi)",
+     "Tenderloin (Severe, 0.59 mi)",
+     "Civic Center (Severe, 0.49 mi)",
+     "Union Square (High, 0.28 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "hills:balanced": {
+    "mi": 2.69,
+    "min": 30,
+    "danger": 68.2,
+    "worst": 95.2,
+    "flaggedPct": 13.5,
+    "protectedPct": 1.3,
+    "lights": 26,
+    "climbFt": 348,
+    "steepest": 8.9,
+    "areas": [
+     "Union Square (High, 0.36 mi)",
+     "SoMa (South of Market) (Severe, 0.12 mi)"
+    ],
+    "label": "Safest \u00b7 best effort"
+   },
+   "hills:safest": {
+    "mi": 2.69,
+    "min": 30,
+    "danger": 68.2,
+    "worst": 95.2,
+    "flaggedPct": 13.5,
+    "protectedPct": 1.3,
+    "lights": 26,
+    "climbFt": 348,
+    "steepest": 8.9,
+    "areas": [
+     "Union Square (High, 0.36 mi)",
+     "SoMa (South of Market) (Severe, 0.12 mi)"
+    ],
+    "label": "Safest + bike lanes \u00b7 best effort"
+   },
+   "lights:fastest": {
+    "mi": 2.15,
+    "min": 22,
+    "danger": 74,
+    "worst": 100,
+    "flaggedPct": 58.5,
+    "protectedPct": 28.6,
+    "lights": 15,
+    "climbFt": 184,
+    "steepest": 11.5,
+    "areas": [
+     "SoMa (South of Market) (Severe, 1.10 mi)",
+     "Tenderloin (Severe, 0.59 mi)",
+     "Civic Center (Severe, 0.56 mi)",
+     "Union Square (High, 0.28 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "lights:balanced": {
+    "mi": 2.69,
+    "min": 30,
+    "danger": 68,
+    "worst": 95.2,
+    "flaggedPct": 13.5,
+    "protectedPct": 1.7,
+    "lights": 25,
+    "climbFt": 348,
+    "steepest": 10.3,
+    "areas": [
+     "Union Square (High, 0.36 mi)",
+     "SoMa (South of Market) (Severe, 0.12 mi)"
+    ],
+    "label": "Safest \u00b7 best effort"
+   },
+   "lights:safest": {
+    "mi": 2.69,
+    "min": 30,
+    "danger": 68,
+    "worst": 95.2,
+    "flaggedPct": 13.5,
+    "protectedPct": 1.7,
+    "lights": 25,
+    "climbFt": 348,
+    "steepest": 10.3,
+    "areas": [
+     "Union Square (High, 0.36 mi)",
+     "SoMa (South of Market) (Severe, 0.12 mi)"
+    ],
+    "label": "Safest + bike lanes \u00b7 best effort"
+   }
+  },
+  "model": "gbt-baseline-2026-10-05"
+ },
+ {
+  "from": {
+   "q": "Clement Street & 6th Avenue",
+   "label": "Clement Street & 6th Avenue, Clement Street, Jordan Park, Inner Richmond, Richmond District, San Francisco, California, 94118, United States",
+   "lat": 37.7828791,
+   "lng": -122.464207
+  },
+  "to": {
+   "q": "Potrero Hill",
+   "label": "Potrero Hill, San Francisco, California, 94107, United States",
+   "lat": 37.7565834,
+   "lng": -122.3991374
+  },
+  "routes": {
+   "fastest": {
+    "mi": 5.83,
+    "min": 53,
+    "danger": 66.6,
+    "worst": 100,
+    "flaggedPct": 36.8,
+    "protectedPct": 4.2,
+    "lights": 11,
+    "climbFt": 528,
+    "steepest": 20.8,
+    "areas": [
+     "Mission District (High, 1.59 mi)",
+     "Potrero Hill (Elevated, 0.81 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "balanced": {
+    "mi": 6.39,
+    "min": 64,
+    "danger": 49.6,
+    "worst": 80.9,
+    "flaggedPct": 10.5,
+    "protectedPct": 6.6,
+    "lights": 15,
+    "climbFt": 968,
+    "steepest": 20.8,
+    "areas": [
+     "Potrero Hill (Elevated, 0.67 mi)"
+    ],
+    "label": "Safest \u00b7 best effort"
+   },
+   "safest": {
+    "mi": 6.65,
+    "min": 66,
+    "danger": 49.4,
+    "worst": 78.3,
+    "flaggedPct": 12.7,
+    "protectedPct": 12.5,
+    "lights": 18,
+    "climbFt": 896,
+    "steepest": 24.7,
+    "areas": [
+     "Potrero Hill (Elevated, 0.84 mi)"
+    ],
+    "label": "Safest + bike lanes \u00b7 best effort"
+   },
+   "hills:fastest": {
+    "mi": 5.81,
+    "min": 57,
+    "danger": 72.2,
+    "worst": 100,
+    "flaggedPct": 60.1,
+    "protectedPct": 5.3,
+    "lights": 32,
+    "climbFt": 548,
+    "steepest": 17.2,
+    "areas": [
+     "Potrero Hill (Elevated, 1.22 mi)",
+     "Western Addition (High, 1.20 mi)",
+     "SoMa (South of Market) (Severe, 0.90 mi)",
+     "Fillmore (High, 0.67 mi)",
+     "Civic Center (Severe, 0.31 mi)",
+     "Mission District (High, 0.22 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "hills:balanced": {
+    "mi": 7.21,
+    "min": 69,
+    "danger": 52.6,
+    "worst": 86.4,
+    "flaggedPct": 8.3,
+    "protectedPct": 19.0,
+    "lights": 27,
+    "climbFt": 732,
+    "steepest": 20.8,
+    "areas": [
+     "Potrero Hill (Elevated, 0.60 mi)"
+    ],
+    "label": "Safest \u00b7 best effort"
+   },
+   "hills:safest": {
+    "mi": 7.21,
+    "min": 69,
+    "danger": 52.6,
+    "worst": 86.4,
+    "flaggedPct": 8.3,
+    "protectedPct": 19.0,
+    "lights": 27,
+    "climbFt": 732,
+    "steepest": 20.8,
+    "areas": [
+     "Potrero Hill (Elevated, 0.60 mi)"
+    ],
+    "label": "Safest + bike lanes \u00b7 best effort"
+   },
+   "lights:fastest": {
+    "mi": 5.96,
+    "min": 54,
+    "danger": 66,
+    "worst": 100,
+    "flaggedPct": 36.2,
+    "protectedPct": 2.4,
+    "lights": 8,
+    "climbFt": 548,
+    "steepest": 20.8,
+    "areas": [
+     "Mission District (High, 1.59 mi)",
+     "Potrero Hill (Elevated, 0.81 mi)",
+     "Western Addition (High, 0.01 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "lights:balanced": {
+    "mi": 6.38,
+    "min": 64,
+    "danger": 50,
+    "worst": 80.9,
+    "flaggedPct": 10.5,
+    "protectedPct": 6.6,
+    "lights": 14,
+    "climbFt": 981,
+    "steepest": 20.8,
+    "areas": [
+     "Potrero Hill (Elevated, 0.67 mi)"
+    ],
+    "label": "Safest \u00b7 best effort"
+   },
+   "lights:safest": {
+    "mi": 6.65,
+    "min": 66,
+    "danger": 49.4,
+    "worst": 78.3,
+    "flaggedPct": 12.7,
+    "protectedPct": 12.5,
+    "lights": 18,
+    "climbFt": 896,
+    "steepest": 24.7,
+    "areas": [
+     "Potrero Hill (Elevated, 0.84 mi)"
+    ],
+    "label": "Safest + bike lanes \u00b7 best effort"
+   }
+  },
+  "model": "gbt-baseline-2026-10-05"
+ },
+ {
+  "from": {
+   "q": "Marina Green",
+   "label": "Marina Green, Marina District, San Francisco, California, United States",
+   "lat": 37.8066027,
+   "lng": -122.4391166
+  },
+  "to": {
+   "q": "Potrero Hill",
+   "label": "Potrero Hill, San Francisco, California, 94107, United States",
+   "lat": 37.7565834,
+   "lng": -122.3991374
+  },
+  "routes": {
+   "fastest": {
+    "mi": 5.29,
+    "min": 55,
+    "danger": 63.6,
+    "worst": 98.6,
+    "flaggedPct": 47.3,
+    "protectedPct": 33.7,
+    "lights": 33,
+    "climbFt": 630,
+    "steepest": 17.2,
+    "areas": [
+     "SoMa (South of Market) (Severe, 1.34 mi)",
+     "Potrero Hill (Elevated, 0.91 mi)",
+     "Tenderloin (Severe, 0.57 mi)",
+     "Civic Center (Severe, 0.42 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "balanced": {
+    "mi": 7.69,
+    "min": 72,
+    "danger": 34.7,
+    "worst": 76.6,
+    "flaggedPct": 12.7,
+    "protectedPct": 65.0,
+    "lights": 27,
+    "climbFt": 646,
+    "steepest": 19.8,
+    "areas": [
+     "Potrero Hill (Elevated, 0.97 mi)"
+    ],
+    "label": "Safest \u00b7 best effort"
+   },
+   "safest": {
+    "mi": 7.69,
+    "min": 72,
+    "danger": 34.7,
+    "worst": 76.6,
+    "flaggedPct": 12.7,
+    "protectedPct": 65.0,
+    "lights": 27,
+    "climbFt": 646,
+    "steepest": 19.8,
+    "areas": [
+     "Potrero Hill (Elevated, 0.97 mi)"
+    ],
+    "label": "Safest + bike lanes \u00b7 best effort"
+   },
+   "hills:fastest": {
+    "mi": 5.69,
+    "min": 58,
+    "danger": 64.7,
+    "worst": 98.6,
+    "flaggedPct": 50.9,
+    "protectedPct": 30.8,
+    "lights": 35,
+    "climbFt": 636,
+    "steepest": 17.2,
+    "areas": [
+     "SoMa (South of Market) (Severe, 1.39 mi)",
+     "Potrero Hill (Elevated, 1.27 mi)",
+     "Tenderloin (Severe, 0.57 mi)",
+     "Civic Center (Severe, 0.42 mi)",
+     "Mission District (High, 0.22 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "hills:balanced": {
+    "mi": 7.52,
+    "min": 70,
+    "danger": 42.1,
+    "worst": 82,
+    "flaggedPct": 16.0,
+    "protectedPct": 52.8,
+    "lights": 29,
+    "climbFt": 581,
+    "steepest": 19.8,
+    "areas": [
+     "Potrero Hill (Elevated, 1.20 mi)"
+    ],
+    "label": "Safest \u00b7 best effort"
+   },
+   "hills:safest": {
+    "mi": 8.04,
+    "min": 74,
+    "danger": 35,
+    "worst": 77.8,
+    "flaggedPct": 7.9,
+    "protectedPct": 64.7,
+    "lights": 28,
+    "climbFt": 614,
+    "steepest": 19.3,
+    "areas": [
+     "Potrero Hill (Elevated, 0.63 mi)"
+    ],
+    "label": "Safest + bike lanes \u00b7 best effort"
+   },
+   "lights:fastest": {
+    "mi": 6.01,
+    "min": 58,
+    "danger": 67.6,
+    "worst": 100,
+    "flaggedPct": 52.3,
+    "protectedPct": 1.4,
+    "lights": 13,
+    "climbFt": 741,
+    "steepest": 20.8,
+    "areas": [
+     "Mission District (High, 1.59 mi)",
+     "Western Addition (High, 0.90 mi)",
+     "Potrero Hill (Elevated, 0.81 mi)",
+     "Fillmore (High, 0.62 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "lights:balanced": {
+    "mi": 7.73,
+    "min": 72,
+    "danger": 34.5,
+    "worst": 76.6,
+    "flaggedPct": 12.6,
+    "protectedPct": 65.2,
+    "lights": 24,
+    "climbFt": 659,
+    "steepest": 19.8,
+    "areas": [
+     "Potrero Hill (Elevated, 0.97 mi)"
+    ],
+    "label": "Safest \u00b7 best effort"
+   },
+   "lights:safest": {
+    "mi": 7.73,
+    "min": 72,
+    "danger": 34.5,
+    "worst": 76.6,
+    "flaggedPct": 12.6,
+    "protectedPct": 65.2,
+    "lights": 24,
+    "climbFt": 659,
+    "steepest": 19.8,
+    "areas": [
+     "Potrero Hill (Elevated, 0.97 mi)"
+    ],
+    "label": "Safest + bike lanes \u00b7 best effort"
+   }
+  },
+  "model": "gbt-baseline-2026-10-05"
+ },
+ {
+  "from": {
+   "q": "Golden Gate Park",
+   "label": "Golden Gate Park, San Francisco, California, United States",
+   "lat": 37.7693681,
+   "lng": -122.4821837
+  },
+  "to": {
+   "q": "Ferry Building",
+   "label": "San Francisco Ferry Building, 1, The Embarcadero, Financial District, San Francisco, California, 94111, United States",
+   "lat": 37.7955487,
+   "lng": -122.3934746
+  },
+  "routes": {
+   "fastest": {
+    "mi": 6.24,
+    "min": 56,
+    "danger": 65.3,
+    "worst": 100,
+    "flaggedPct": 29.8,
+    "protectedPct": 20.2,
+    "lights": 31,
+    "climbFt": 230,
+    "steepest": 4.3,
+    "areas": [
+     "SoMa (South of Market) (Severe, 1.15 mi)",
+     "Downtown (High, 0.87 mi)",
+     "Civic Center (Severe, 0.48 mi)",
+     "Tenderloin (Severe, 0.35 mi)",
+     "Union Square (High, 0.32 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "balanced": {
+    "mi": 7.15,
+    "min": 67,
+    "danger": 44.7,
+    "worst": 85.2,
+    "flaggedPct": 0.0,
+    "protectedPct": 8.5,
+    "lights": 14,
+    "climbFt": 810,
+    "steepest": 21.8,
+    "areas": [],
+    "label": "Safest"
+   },
+   "safest": {
+    "mi": 9.71,
+    "min": 84,
+    "danger": 31.9,
+    "worst": 76.6,
+    "flaggedPct": 0.0,
+    "protectedPct": 54.9,
+    "lights": 22,
+    "climbFt": 528,
+    "steepest": 11.6,
+    "areas": [],
+    "label": "Safest + bike lanes"
+   },
+   "hills:fastest": {
+    "mi": 6.38,
+    "min": 58,
+    "danger": 64.4,
+    "worst": 100,
+    "flaggedPct": 43.8,
+    "protectedPct": 27.0,
+    "lights": 40,
+    "climbFt": 203,
+    "steepest": 5,
+    "areas": [
+     "SoMa (South of Market) (Severe, 1.05 mi)",
+     "Downtown (High, 0.88 mi)",
+     "Western Addition (High, 0.86 mi)",
+     "Tenderloin (Severe, 0.56 mi)",
+     "Civic Center (Severe, 0.53 mi)",
+     "Union Square (High, 0.32 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "hills:balanced": {
+    "mi": 7.03,
+    "min": 63,
+    "danger": 52.3,
+    "worst": 85.8,
+    "flaggedPct": 0.0,
+    "protectedPct": 10.3,
+    "lights": 27,
+    "climbFt": 384,
+    "steepest": 8.6,
+    "areas": [],
+    "label": "Safest"
+   },
+   "hills:safest": {
+    "mi": 9.71,
+    "min": 83,
+    "danger": 32.6,
+    "worst": 76.6,
+    "flaggedPct": 0.0,
+    "protectedPct": 54.9,
+    "lights": 24,
+    "climbFt": 427,
+    "steepest": 10.1,
+    "areas": [],
+    "label": "Safest + bike lanes"
+   },
+   "lights:fastest": {
+    "mi": 7.12,
+    "min": 63,
+    "danger": 52.4,
+    "worst": 90.3,
+    "flaggedPct": 0.4,
+    "protectedPct": 8.6,
+    "lights": 12,
+    "climbFt": 509,
+    "steepest": 21.8,
+    "areas": [
+     "Chinatown (High, 0.03 mi)"
+    ],
+    "label": "Fastest"
+   },
+   "lights:balanced": {
+    "mi": 7.2,
+    "min": 67,
+    "danger": 45.1,
+    "worst": 85.2,
+    "flaggedPct": 0.0,
+    "protectedPct": 10.1,
+    "lights": 11,
+    "climbFt": 810,
+    "steepest": 21.8,
+    "areas": [],
+    "label": "Safest"
+   },
+   "lights:safest": {
+    "mi": 9.71,
+    "min": 84,
+    "danger": 31.9,
+    "worst": 76.6,
+    "flaggedPct": 0.0,
+    "protectedPct": 54.9,
+    "lights": 21,
+    "climbFt": 535,
+    "steepest": 11.6,
+    "areas": [],
+    "label": "Safest + bike lanes"
+   }
+  },
+  "model": "gbt-baseline-2026-10-05"
+ }
+]

@@ -41,7 +41,7 @@ export async function geocode(q: string, limit = 6): Promise<GeocodeHit[]> {
   const res = await fetch(url, {
     headers: {
       // Nominatim rejects requests without an identifying User-Agent.
-      "User-Agent": "no-roll-models/0.1 (safer bike routing; dev)",
+      "User-Agent": "BetterRoutes/0.1 (safer bike routing; dev)",
       "Accept-Language": "en",
     },
     signal: AbortSignal.timeout(8000),
