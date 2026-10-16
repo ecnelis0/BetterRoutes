@@ -136,7 +136,7 @@ async function fetchOverpass() {
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
       Accept: "*/*",
-      "User-Agent": "no-roll-models-data-fetch/1.0 (one-time dev script)",
+      "User-Agent": "BetterRoutes-data-fetch/1.0 (one-time dev script)",
     },
     body: `data=${encodeURIComponent(query)}`,
   });

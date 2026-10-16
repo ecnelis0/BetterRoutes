@@ -1,14 +1,14 @@
-# No Roll Models: the bike map that routes for safety, not just speed
+# BetterRoutes: the bike map that routes for safety, not just speed
 
-Every map app will tell you the fastest way to bike across San Francisco. No Roll
-Models tells you the **safest** way and shows its work. It routes around the city's
+Every map app will tell you the fastest way to bike across San Francisco.
+BetterRoutes tells you the **safest** way and shows its work. It routes around the city's
 real crash hotspots and dangerous corridors, keeps you on protected lanes and
 avoids walls of hills. Every route says exactly what it avoided and what that
 cost you.
 
 ![Safest + bike lanes from Ocean Beach to the Ferry Building](docs/screenshots/three-routes.jpg)
 
-📊 **Demo deck:** [`docs/NoRollModels_Demo_Deck.pptx`](docs/NoRollModels_Demo_Deck.pptx) ([PDF](docs/NoRollModels_Demo_Deck.pdf)). The spoken script is in the speaker notes.
+📊 **Demo deck:** [`docs/BetterRoutes_Demo_Deck.pptx`](docs/BetterRoutes_Demo_Deck.pptx) ([PDF](docs/BetterRoutes_Demo_Deck.pdf)). The spoken script is in the speaker notes.
 
 ## The problem: bike danger is concentrated
 

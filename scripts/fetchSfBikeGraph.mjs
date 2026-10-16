@@ -108,7 +108,7 @@ async function fetchOverpass() {
           method: "POST",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
-            "User-Agent": "no-roll-models-bike-graph-fetch/1.0 (one-time dev script)",
+            "User-Agent": "BetterRoutes-bike-graph-fetch/1.0 (one-time dev script)",
             Accept: "application/json",
           },
           body,

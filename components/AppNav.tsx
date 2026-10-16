@@ -17,7 +17,7 @@ export default function AppNav() {
   ];
   return (
     <nav className="flex h-10 shrink-0 items-center gap-1 border-b border-slate-200 bg-white px-3 text-sm" aria-label="Main">
-      <span className="mr-3 font-bold text-black">🚲 No Roll Models</span>
+      <span className="mr-3 font-bold text-black">🚲 BetterRoutes</span>
       {tabs.map((t) => {
         const active = t.href === "/" ? pathname === "/" : pathname.startsWith(t.href);
         return (
