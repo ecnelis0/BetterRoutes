@@ -54,6 +54,60 @@ export interface LaneMatchStats {
 }
 
 /**
+ * Whether a facility in range really belongs to this edge, not merely near it.
+ *
+ * Proximity alone counts a side street whose first block starts at a
+ * protected lane as protected too, and a road running beside a creek trail
+ * as car-free. Both tell a rider the opposite of the truth, so the strict
+ * reading demands the edge run ALONG the facility, and an off-street path
+ * only ever match path-like edges. SF keeps the original looser match so that
+ * its measured results and trained scores stay as they are.
+ */
+const OFF_STREET_CLASSES = new Set(["cycleway", "path"]);
+const MAX_ANGLE_DEGREES = 35;
+/** Bearings of shorter edges are mostly noise from how OSM drew a junction. */
+const MIN_EDGE_FOR_BEARING_METERS = 10;
+
+/** Points along a path no further apart than a grid cell. */
+function densify(path: LatLng[]): LatLng[] {
+  const out: LatLng[] = [];
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = path[i];
+    const b = path[i + 1];
+    const dy = (b.lat - a.lat) * M_PER_DEG_LAT;
+    const dx = (b.lng - a.lng) * M_PER_DEG_LAT * Math.cos((a.lat * Math.PI) / 180);
+    const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / CELL_METERS));
+    for (let k = 0; k < steps; k++) {
+      out.push({ lat: a.lat + ((b.lat - a.lat) * k) / steps, lng: a.lng + ((b.lng - a.lng) * k) / steps });
+    }
+  }
+  out.push(path[path.length - 1]);
+  return out;
+}
+
+export function strictMatch(edge: GraphEdge, a: LatLng, b: LatLng, lane: BikeLaneSegment): boolean {
+  if (lane.offStreet && !OFF_STREET_CLASSES.has(edge.roadClass)) return false;
+  if (edge.lengthMeters < MIN_EDGE_FOR_BEARING_METERS) return true;
+  const mid = { lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 };
+  let best = lane.path[0];
+  let next = lane.path[1];
+  let bestD = Infinity;
+  for (let i = 0; i < lane.path.length - 1; i++) {
+    const d = distanceToPathMeters(mid, [lane.path[i], lane.path[i + 1]]);
+    if (d < bestD) {
+      bestD = d;
+      best = lane.path[i];
+      next = lane.path[i + 1];
+    }
+  }
+  const cos = Math.cos((mid.lat * Math.PI) / 180);
+  const angle = (p: LatLng, q: LatLng) => Math.atan2(q.lat - p.lat, (q.lng - p.lng) * cos);
+  let diff = (Math.abs(angle(a, b) - angle(best, next)) * 180) / Math.PI;
+  diff %= 180;
+  return Math.min(diff, 180 - diff) <= MAX_ANGLE_DEGREES;
+}
+
+/**
  * Rewrites `edge.tier` in place from the SFMTA network where a facility
  * lies within `MATCH_TOLERANCE_METERS` of the edge midpoint.
  *
@@ -67,15 +121,19 @@ export interface LaneMatchStats {
  * protected lane on one side is usually recorded separately from the
  * painted lane opposite, and a rider can use either.
  */
-export function applySfmtaLaneTiers(
+export function applyLaneTiers(
   edges: GraphEdge[],
   nodes: LatLng[],
-  lanes: BikeLaneSegment[]
+  lanes: BikeLaneSegment[],
+  { strict = false }: { strict?: boolean } = {}
 ): LaneMatchStats {
   const buckets = new Map<string, number[]>();
   lanes.forEach((lane, i) => {
     const seen = new Set<string>();
-    for (const p of lane.path) {
+    // Vertices alone are enough for SF's block-by-block records. San José's
+    // segments are ~280m on average and straight ones have only their two
+    // ends, so the streets between were never even considered.
+    for (const p of strict ? densify(lane.path) : lane.path) {
       const k = cellKey(p.lat, p.lng);
       if (seen.has(k)) continue;
       seen.add(k);
@@ -116,9 +174,13 @@ export function applySfmtaLaneTiers(
       const rank = TIER_RANK[lane.tier];
       // Skip the distance test when it cannot improve on what we have.
       if (rank <= bestRank) continue;
-      if (distanceToPathMeters(mid, lane.path) <= MATCH_TOLERANCE_METERS) bestRank = rank;
+      if (distanceToPathMeters(mid, lane.path) > MATCH_TOLERANCE_METERS) continue;
+      if (strict && !strictMatch(edge, a, b, lane)) continue;
+      bestRank = rank;
     }
     if (bestRank < 0) continue;
+    // A car-free path cannot be a painted lane, whatever runs alongside it.
+    if (strict && edge.roadClass === "cycleway" && bestRank < TIER_RANK[edge.tier]) continue;
 
     stats.matched++;
     const next = BY_RANK[bestRank];

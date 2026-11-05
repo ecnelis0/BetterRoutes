@@ -23,6 +23,8 @@ export interface GraphEdge {
   lengthMeters: number;
   /** Posted speed in mph where OSM knows it, else null. */
   maxspeed: number | null;
+  /** Runs beside a freeway, so the router charges heavily for it. */
+  alongFreeway?: true;
 }
 
 export type RoadClass =
@@ -64,6 +66,7 @@ interface ColumnarGraph {
   oneway: number[];
   maxspeed: number[];
   lengthMeters: number[];
+  alongFreeway?: number[];
 }
 
 /**
@@ -87,9 +90,11 @@ export function decodeGraph(raw: ColumnarGraph): BikeGraph {
   const edges: GraphEdge[] = [];
   const adjacency: number[][] = Array.from({ length: raw.nodeCount }, () => []);
 
+  const along = new Set(raw.alongFreeway ?? []);
   const pushEdge = (from: number, to: number, i: number) => {
     const id = edges.length;
     edges.push({
+      ...(along.has(i) ? { alongFreeway: true as const } : {}),
       id,
       from,
       to,

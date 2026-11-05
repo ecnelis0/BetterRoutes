@@ -4,6 +4,7 @@ import { areaTier } from "../routing/service";
 import { alongPath, distanceToPath } from "../ui/geometry";
 import type { LatLng } from "../types";
 import poiFile from "../data/sfPois.json";
+import sanJosePoiFile from "../data/sanjose/pois.json";
 
 /**
  * INTEREST ROUTES: a ride shaped around what the rider likes - beaches,
@@ -54,6 +55,7 @@ export const REACH: Record<PlaceInterest, number> = {
   viewpoint: 2,
   park: 1.5,
   art: 1,
+  landmark: 2,
   boba: 1,
   coffee: 1,
   food: 1,
@@ -71,7 +73,10 @@ export interface InterestRoute {
   extraPercent: number;
 }
 
-const ALL_POIS = (poiFile as { pois: Poi[] }).pois;
+// One list across regions: selection works by distance from the route, and the
+// regions are far enough apart that a ride can only ever reach its own.
+const ALL_POIS = [...(poiFile as { pois: Poi[] }).pois, ...(sanJosePoiFile as { pois: Poi[] }).pois];
+const NOTABLE_BONUS_METERS = 400;
 /** A place this close to the route is "on the way" and gets labelled. */
 export const ALONG_METERS = 100;
 
@@ -151,7 +156,9 @@ export function choosePlaces(
     if (along < 0.05 * pathMeters || along > 0.95 * pathMeters) continue;
     list.push({ poi, off, along });
   }
-  for (const list of byCat.values()) list.sort((a, b) => a.off - b.off);
+  // A place people have written about beats a nearer unknown one, within reason.
+  const rank = (x: { poi: Poi; off: number }) => x.off - (x.poi.notable ? NOTABLE_BONUS_METERS : 0);
+  for (const list of byCat.values()) list.sort((a, b) => rank(a) - rank(b));
 
   const chosen: { poi: Poi; off: number; along: number }[] = [];
   const perCat = new Map<PlaceInterest, number>();

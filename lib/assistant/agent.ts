@@ -1,5 +1,6 @@
 import { generateText, isStepCount, tool, type LanguageModel } from "ai";
 import { z } from "zod";
+import { DEFAULT_REGION, REGIONS } from "../data/regions";
 import { geocode } from "../geocode";
 import { emojiFor, INTERESTS, type InterestId, type PlaceInterest } from "../interests/catalog";
 import { nearestPlace } from "../interests/planner";
@@ -22,16 +23,21 @@ const PLACE_KINDS = INTERESTS.map((i) => i.id).filter((id) => id !== "bikepaths"
 const MAX_FOR_YOU_STOPS = 8;
 
 export function systemPrompt(ctx: AssistantContext): string {
+  const region = REGIONS[ctx.region ?? DEFAULT_REGION];
   return [
-    "You are the route assistant in a San Francisco bike-route planner.",
+    `You are the route assistant in a ${region.name} bike-route planner.`,
     "You change the plan ONLY by calling tools; then reply in one or two short sentences saying what you changed.",
     "If the rider asks something you cannot do with the tools, say so plainly.",
     "",
     "How routing works (explain, do not promise around it):",
     "- Options: Fastest (quickest ride, counting hills and red lights), Safest, Safest + bike lanes, and 'For you' (passes places the rider likes).",
-    "- Safest options never enter Severe areas (Tenderloin, SoMa, Civic Center, Bayview-Hunters Point), and stay out of High/Elevated areas and crash hotspots unless that makes the trip more than 40% longer than Fastest.",
+    region.safetyData
+      ? "- Safest options never enter Severe areas (Tenderloin, SoMa, Civic Center, Bayview-Hunters Point), and stay out of High/Elevated areas and crash hotspots unless that makes the trip more than 40% longer than Fastest."
+      : `- Safest options prefer protected bike lanes and calmer streets. Crash history and flagged neighbourhoods are not loaded for ${region.name} yet, so never claim a route avoids dangerous areas or crash hotspots here. No route ever rides on a freeway or expressway. Routes avoid running beside them where they can, but a short stretch beside one is possible and is reported on the route, so never promise none.`,
     "- 'Avoid hills' minimises elevation change; 'Fewer traffic lights' avoids signals.",
-    `- Interests available: ${INTERESTS.map((i) => `${i.id} (${i.label})`).join(", ")}.`,
+    `- Interests available: ${INTERESTS.filter((i) => !region.hiddenInterests?.includes(i.id))
+      .map((i) => `${i.id} (${i.label})`)
+      .join(", ")}.`,
     "- To make the route go somewhere specific ('via Ocean Beach', 'past the Ferry Building'), use add_stop.",
     "",
     "The options and settings are ways to CHOOSE a route. Once the rider has confirmed one ('myRoute' below is not null),",
@@ -58,13 +64,14 @@ export async function runAssistant(
   ctx: AssistantContext
 ): Promise<{ reply: string; actions: AssistantAction[] }> {
   const actions: AssistantAction[] = [];
+  const regionName = REGIONS[ctx.region ?? DEFAULT_REGION].name;
   // One lookup per place name: "boba and food in Chinatown" asks for Chinatown twice.
   const found = new Map<string, Promise<{ label: string; point: LatLng } | null>>();
   const findPlace = (q: string) => {
     const key = q.trim().toLowerCase();
     let hit = found.get(key);
     if (!hit) {
-      hit = geocode(q, 1).then(([h]) => (h ? { label: h.label, point: { lat: h.lat, lng: h.lng } } : null));
+      hit = geocode(q, 1, ctx.region ?? DEFAULT_REGION).then(([h]) => (h ? { label: h.label, point: { lat: h.lat, lng: h.lng } } : null));
       found.set(key, hit);
     }
     return hit;
@@ -91,7 +98,7 @@ export async function runAssistant(
     stopWhen: isStepCount(5),
     tools: {
       set_trip: tool({
-        description: "Set where the ride starts and/or ends, by place name or address in San Francisco.",
+        description: `Set where the ride starts and/or ends, by place name or address in ${regionName}.`,
         inputSchema: z.object({
           from: z.string().optional().describe("Start, e.g. 'Marina Green'"),
           to: z.string().optional().describe("Destination, e.g. 'Ocean Beach'"),
@@ -100,7 +107,7 @@ export async function runAssistant(
           (tripSet = (async () => {
             const a = from ? await findPlace(from) : undefined;
             const b = to ? await findPlace(to) : undefined;
-            if ((from && !a) || (to && !b)) return { ok: false, error: `Could not find ${!a && from ? from : to} in San Francisco.` };
+            if ((from && !a) || (to && !b)) return { ok: false, error: `Could not find ${!a && from ? from : to} in ${regionName}.` };
             actions.push({ type: "set_trip", from: a ?? undefined, to: b ?? undefined });
             return { ok: true, from: a?.label, to: b?.label };
           })()),
@@ -134,11 +141,11 @@ export async function runAssistant(
         },
       }),
       add_stop: tool({
-        description: "Make the route pass through a place (by name or address in San Francisco).",
+        description: `Make the route pass through a place (by name or address in ${regionName}).`,
         inputSchema: z.object({ place: z.string() }),
         execute: async ({ place }) => {
           const hit = await findPlace(place);
-          if (!hit) return { ok: false, error: `Could not find ${place} in San Francisco.` };
+          if (!hit) return { ok: false, error: `Could not find ${place} in ${regionName}.` };
           actions.push({ type: "add_stop", ...hit });
           return { ok: true, found: hit.label };
         },
@@ -177,7 +184,7 @@ export async function runAssistant(
           stops: z
             .array(
               z.object({
-                place: z.string().optional().describe("A place or neighbourhood in San Francisco, e.g. 'Chinatown', 'Ferry Building'"),
+                place: z.string().optional().describe(`A place or neighbourhood in ${regionName}`),
                 kind: z
                   .enum(PLACE_KINDS)
                   .optional()
@@ -195,7 +202,7 @@ export async function runAssistant(
           const used = new Set<string>();
           for (const s of stops) {
             const near = s.place ? await findPlace(s.place) : undefined;
-            if (s.place && !near) return { ok: false, error: `Could not find ${s.place} in San Francisco.` };
+            if (s.place && !near) return { ok: false, error: `Could not find ${s.place} in ${regionName}.` };
             if (!s.kind) {
               if (!near) return { ok: false, error: "Each stop needs a place, a kind, or both." };
               out.push({ name: near.label.split(",")[0], emoji: "📍", point: near.point });

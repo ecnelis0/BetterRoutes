@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { DEFAULT_REGION, REGION_IDS, REGIONS, type RegionId } from "@/lib/data/regions";
 import type { LatLng } from "@/lib/types";
 
 interface GeocodeHit {
@@ -15,6 +16,8 @@ interface Props {
   onValueChange: (text: string) => void;
   /** Fires with a resolved point when the user picks a suggestion, and with null whenever the text is edited away from that pick. */
   onSelect: (point: LatLng | null, label: string) => void;
+  /** Suggestions are limited to this region's street graph. */
+  region?: RegionId;
 }
 
 /**
@@ -30,10 +33,13 @@ interface Props {
  * the app routing from the *previously* picked place while displaying the
  * new text - a wrong route that looks right.
  */
-export default function AddressSearch({ placeholder, value, onValueChange, onSelect }: Props) {
+export default function AddressSearch({ placeholder, value, onValueChange, onSelect, region = DEFAULT_REGION }: Props) {
   const [hits, setHits] = useState<GeocodeHit[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  // What a finished search has to say for itself. Without this an empty answer
+  // or a failed lookup left the box looking exactly as if nothing had happened.
+  const [notice, setNotice] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
   const boxRef = useRef<HTMLDivElement | null>(null);
   // Guards against an older, slower lookup landing after a newer one and
@@ -59,6 +65,7 @@ export default function AddressSearch({ placeholder, value, onValueChange, onSel
         setHits([]);
         setOpen(false);
         setLoading(false);
+        setNotice(null);
       }, 0);
       return () => clearTimeout(clear);
     }
@@ -67,22 +74,30 @@ export default function AddressSearch({ placeholder, value, onValueChange, onSel
     // every keystroke would both breach it and mostly waste the results.
     const timer = setTimeout(async () => {
       setLoading(true);
+      setNotice(null);
       try {
-        const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
+        const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}&region=${region}`);
         const json = (await res.json()) as { results?: GeocodeHit[] };
         if (id !== queryIdRef.current) return;
         setHits(json.results ?? []);
         setOpen((json.results ?? []).length > 0);
         setActiveIndex(-1);
+        if (!res.ok) setNotice("Address search isn't responding. Try again in a moment.");
+        else if ((json.results ?? []).length === 0) {
+          setNotice(`No match for "${q}" in ${REGION_IDS.map((r) => REGIONS[r].name).join(" or ")}.`);
+        }
       } catch {
-        if (id === queryIdRef.current) setHits([]);
+        if (id === queryIdRef.current) {
+          setHits([]);
+          setNotice("Address search isn't responding. Try again in a moment.");
+        }
       } finally {
         if (id === queryIdRef.current) setLoading(false);
       }
     }, 350);
 
     return () => clearTimeout(timer);
-  }, [value]);
+  }, [value, region]);
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -95,6 +110,7 @@ export default function AddressSearch({ placeholder, value, onValueChange, onSel
   function pick(hit: GeocodeHit) {
     justPickedRef.current = true;
     queryIdRef.current++; // cancel any in-flight lookup for the old text
+    setNotice(null);
     onValueChange(hit.label);
     onSelect({ lat: hit.lat, lng: hit.lng }, hit.label);
     setOpen(false);
@@ -138,6 +154,16 @@ export default function AddressSearch({ placeholder, value, onValueChange, onSel
         <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">
           …
         </span>
+      )}
+      {loading && !open && (
+        <p role="status" className="mt-1 text-xs text-slate-600">
+          Searching…
+        </p>
+      )}
+      {notice && !loading && (
+        <p role="status" className="mt-1 text-xs text-slate-600">
+          {notice}
+        </p>
       )}
       {open && hits.length > 0 && (
         <ul className="absolute z-30 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg">

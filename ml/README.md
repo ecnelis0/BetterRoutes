@@ -87,6 +87,28 @@ Both print cross-validated MAE and R². Those come from `cross_val_predict`,
 not from scoring the training set, so they are an honest estimate rather
 than a measure of how well the model memorised.
 
+## Regions
+
+Each region has its own graph and its own artifact, because edge ids are
+positions in one graph. Everything takes `--region`:
+
+```bash
+npm run data:san-jose                                      # graph, elevation, city data, places
+npx tsx scripts/exportTrainingFeatures.ts --region=sanjose # ml/data/sanjose/edge_features.csv
+.venv/bin/python ml/train.py --model=gbt --target=baseline --region=sanjose
+```
+
+San José has no crash or flagged-area features, so they are all zero and
+`laneProtection`, road class, speed and freeway/arterial proximity decide the
+score. **Like SF's shipped artifact, it is trained on `--target=baseline`**: it
+learns the hand-tuned formula, so its R² of ~1 says the pipeline works, not that
+it has learned which streets are safe. What actually drives its routes is the
+city's surveyed bike network. A model that beats the formula needs real labels.
+
+To add a region: add it to `lib/data/regions.json` (boxes must not overlap), give
+it a branch in `lib/routing/regionData.ts`, write an importer for that city's
+bikeway survey on the model of `scripts/importSanJoseData.mjs`, then run the above.
+
 ## Checking the pipeline without labels
 
 ```bash

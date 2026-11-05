@@ -9,7 +9,7 @@ import {
   neighborhoodRiskColor,
   type DangerousNeighborhood,
 } from "@/lib/data/sfDangerousNeighborhoods";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { RouteDescription } from "@/lib/ui/routeDescription";
 import { distanceToPath } from "@/lib/ui/geometry";
 import type { WikiPlace } from "@/lib/places/wikipedia";
@@ -255,6 +255,23 @@ export default function MapView({
   onSegmentClick,
 }: MapViewProps) {
   const [openWiki, setOpenWiki] = useState<string | null>(null);
+  const [map, setMap] = useState<google.maps.Map | null>(null);
+
+  // Brings a picked address into view. A fixed city-wide view was enough for
+  // compact San Francisco; in San José the pin simply landed off screen, so a
+  // successful search looked like nothing had happened.
+  useEffect(() => {
+    if (!map) return;
+    if (origin && destination) {
+      const bounds = new google.maps.LatLngBounds();
+      bounds.extend(origin);
+      bounds.extend(destination);
+      map.fitBounds(bounds, 90);
+    } else if (origin || destination) {
+      map.panTo((origin ?? destination)!);
+      map.setZoom(15);
+    }
+  }, [map, origin, destination]);
   const lines = useMemo(
     () =>
       roadSegments.map((segment) => ({
@@ -277,6 +294,8 @@ export default function MapView({
       mapContainerStyle={containerStyle}
       center={center}
       zoom={13}
+      onLoad={setMap}
+      onUnmount={() => setMap(null)}
       options={editing ? { ...mapOptions, draggableCursor: "crosshair" } : mapOptions}
       onClick={(e) => {
         const at = toLatLng(e);

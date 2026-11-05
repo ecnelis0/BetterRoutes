@@ -1,0 +1,18 @@
+{
+  "sf": {
+    "name": "San Francisco",
+    "label": "San Francisco, CA",
+    "center": { "lat": 37.7749, "lng": -122.4194 },
+    "bounds": { "north": 37.812, "south": 37.705, "east": -122.355, "west": -122.515 },
+    "safetyData": true,
+    "hiddenInterests": ["landmark"]
+  },
+  "sanjose": {
+    "name": "San José",
+    "label": "San José, CA",
+    "center": { "lat": 37.3337, "lng": -121.8907 },
+    "bounds": { "north": 37.47, "south": 37.14, "east": -121.7, "west": -122.07 },
+    "safetyData": false,
+    "hiddenInterests": ["beach"]
+  }
+}

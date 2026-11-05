@@ -28,6 +28,12 @@ export interface DescribableRoute {
   areaTradeoff?: { avoidAllExtraPercent: number | null; limitPercent: number } | null;
   /** Crash hotspots ridden through (not counting ones the trip starts/ends in). */
   crashHotspots?: { entered: number; meters: number };
+  /**
+   * The region has no crash or flagged-area data. "Avoided every Severe area"
+   * would be true only because nothing is marked, so no such claim is made.
+   */
+  noSafetyData?: boolean;
+  metersAlongFreeway?: number;
   /** Present only on a route the rider edited. */
   customWaypoints?: unknown[];
   /** Suggested edits the rider accepted - each may knowingly break a setting. */
@@ -137,10 +143,23 @@ export function describeRoute(route: DescribableRoute, minutes: string): RouteDe
     choices.push({ text: `You chose: ${a}`, honoured: true });
   }
 
-  if (route.profile === "fastest") {
-    choices.push({ text: "Did not avoid dangerous areas", honoured: false });
-  } else {
-    choices.push(...areaChoices(route));
+  if (!route.noSafetyData) {
+    if (route.profile === "fastest") {
+      choices.push({ text: "Did not avoid dangerous areas", honoured: false });
+    } else {
+      choices.push(...areaChoices(route));
+    }
+  }
+
+  // San José's graph has no freeways or expressways at all; say so, and own up
+  // to any stretch beside one. SF's has no such data to report on.
+  if (route.noSafetyData) {
+    const beside = route.metersAlongFreeway ?? 0;
+    choices.push(
+      beside > 0
+        ? { text: `Stays off freeways and expressways, but runs beside one for ${(beside / MI).toFixed(1)} mi - no better way`, honoured: false }
+        : { text: "Stays off and away from freeways and expressways", honoured: true }
+    );
   }
 
   if (route.profile === "safest") {

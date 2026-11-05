@@ -16,7 +16,7 @@ import {
   neighborhoodRiskColor,
   neighborhoodRiskLabel,
 } from "@/lib/data/sfDangerousNeighborhoods";
-import { DEMO_CITY } from "@/lib/mockData";
+import { DEFAULT_REGION, regionAt, REGION_IDS, REGIONS, type RegionId } from "@/lib/data/regions";
 import { buildManeuvers, formatDistance } from "@/lib/nav/instructions";
 import { describeRoute } from "@/lib/ui/routeDescription";
 import { rideMinutes, rideSeconds, type TimedRoute } from "@/lib/ui/rideTime";
@@ -59,11 +59,11 @@ interface LayersResponse {
 // Labels mirror ROUTE_PROFILES in lib/routing/cost.ts. The route itself
 // carries its label too (with "best effort" appended when hard avoidance
 // had to be relaxed), and that takes precedence when shown.
-const ROUTE_TABS: { kind: RouteProfileId; label: string; hint: string }[] = [
+const ROUTE_TABS: { kind: RouteProfileId; label: string; hint: string; hintNoSafetyData?: string }[] = [
   { kind: "fastest", label: "Fastest", hint: "Quickest ride, counting hills and red lights" },
   // Matches the area rules in lib/routing/service.ts (AREA_DETOUR_LIMIT).
-  { kind: "balanced", label: "Safest", hint: "Never Severe areas; others unless the detour passes 40%" },
-  { kind: "safest", label: "Safest + bike lanes", hint: "Same, and keeps to protected lanes" },
+  { kind: "balanced", label: "Safest", hint: "Never Severe areas; others unless the detour passes 40%", hintNoSafetyData: "Prefers calmer streets and protected lanes" },
+  { kind: "safest", label: "Safest + bike lanes", hint: "Same, and keeps to protected lanes", hintNoSafetyData: "Keeps to protected lanes wherever it can" },
 ];
 
 function metersToMiles(m: number): string {
@@ -111,6 +111,8 @@ export default function Home() {
   // not just whichever ones happen to sit on the chosen route.
   const [showNeighborhoodView, setShowNeighborhoodView] = useState(false);
 
+  const [regionId, setRegionId] = useState<RegionId>(DEFAULT_REGION);
+  const region = REGIONS[regionId];
   const [origin, setOrigin] = useState<LatLng | null>(null);
   const [destination, setDestination] = useState<LatLng | null>(null);
   const [routes, setRoutes] = useState<Record<string, RouteSummary>>({});
@@ -266,6 +268,18 @@ export default function Home() {
     setRoutingError(null);
   }
 
+  /** Each region is its own street graph, so a trip planned in one means nothing in another. */
+  function switchRegion(next: RegionId) {
+    if (next === regionId) return;
+    setRegionId(next);
+    resetRouteState();
+    setOrigin(null);
+    setDestination(null);
+    setOriginText("");
+    setDestinationText("");
+    setShowNeighborhoodView(false);
+  }
+
   /**
    * Asks our own routing service for all three profiles.
    *
@@ -350,8 +364,34 @@ export default function Home() {
   // immediately, then kicks off a brand new search the moment *both* ends
   // are known (no separate "find route" button - the whole point is that
   // Google's route just appears as soon as you've entered A and B).
+  /**
+   * A place picked in another area takes the planner there. The other end of
+   * the trip stays behind, since a route can't cross areas yet; the rider is
+   * told, because otherwise an address they typed just disappears.
+   */
+  function followPickToRegion(value: LatLng | null, otherEndWasSet: boolean, clearOtherEnd: () => void): boolean {
+    const next = value && regionAt(value);
+    if (!next || next === regionId) return false;
+    setRegionId(next);
+    clearOtherEnd();
+    setShowNeighborhoodView(false);
+    clearForYouCustom();
+    resetRouteState();
+    if (otherEndWasSet) {
+      setRoutingError(
+        `Moved to ${REGIONS[next].name}. Routes can't cross between areas yet, so pick the other end of the trip here too.`
+      );
+    }
+    return true;
+  }
+
   function updateOrigin(value: LatLng | null) {
     setOrigin(value);
+    const moved = followPickToRegion(value, destination !== null, () => {
+      setDestination(null);
+      setDestinationText("");
+    });
+    if (moved) return;
     clearForYouCustom();
     resetRouteState();
     if (value && destination) void startRouteSearch(value, destination);
@@ -359,6 +399,11 @@ export default function Home() {
 
   function updateDestination(value: LatLng | null) {
     setDestination(value);
+    const moved = followPickToRegion(value, origin !== null, () => {
+      setOrigin(null);
+      setOriginText("");
+    });
+    if (moved) return;
     clearForYouCustom();
     resetRouteState();
     if (origin && value) void startRouteSearch(origin, value);
@@ -936,7 +981,7 @@ export default function Home() {
     .map((i) => i.emoji)
     .join(" ");
   const forYouStopCount = forYouCustom?.customWaypoints?.length ?? 0;
-  const tabs: { kind: RouteKey; label: string; hint: string }[] = [
+  const tabs: { kind: RouteKey; label: string; hint: string; hintNoSafetyData?: string }[] = [
     ...ROUTE_TABS,
     ...(forYouCustom || forYouBusy
       ? [
@@ -1006,6 +1051,7 @@ export default function Home() {
         });
   const hasBothEnds = Boolean(origin && destination);
   const assistantContext: AssistantContext = {
+    region: regionId,
     from: originText || null,
     to: destinationText || null,
     settings: { avoidHills: avoidElevation, fewerLights: fewerSignals },
@@ -1051,10 +1097,27 @@ export default function Home() {
       <aside className="flex min-h-0 w-80 flex-shrink-0 flex-col gap-4 overflow-y-auto border-r border-slate-200 bg-white p-4">
         <div>
           <h1 className="text-lg font-bold text-black">🚲 Safe Route</h1>
-          <p className="mt-1 text-xs text-black">San Francisco, CA</p>
+          <select
+            value={regionId}
+            onChange={(e) => switchRegion(e.target.value as RegionId)}
+            aria-label="Area"
+            className="mt-1 rounded-md border border-slate-300 bg-white px-1.5 py-1 text-xs text-black"
+          >
+            {REGION_IDS.map((id) => (
+              <option key={id} value={id}>
+                {REGIONS[id].label}
+              </option>
+            ))}
+          </select>
+          {!region.safetyData && (
+            <p className="mt-1.5 text-xs text-slate-600" data-testid="region-data-note">
+              Routes here favour protected lanes from the city&apos;s bike network. Crash history and flagged
+              areas aren&apos;t loaded for {region.name} yet.
+            </p>
+          )}
         </div>
 
-        <AssistantChat context={assistantContext} onActions={applyAssistantActions} />
+        <AssistantChat key={regionId} context={assistantContext} onActions={applyAssistantActions} />
 
         <section className="flex flex-col gap-2">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-black">
@@ -1062,12 +1125,14 @@ export default function Home() {
           </h2>
           <AddressSearch
             placeholder="Start address (A)"
+            region={regionId}
             value={originText}
             onValueChange={setOriginText}
             onSelect={(point) => updateOrigin(point)}
           />
           <AddressSearch
             placeholder="Destination address (B)"
+            region={regionId}
             value={destinationText}
             onValueChange={setDestinationText}
             onSelect={(point) => updateDestination(point)}
@@ -1106,20 +1171,22 @@ export default function Home() {
             </span>
             <span className="text-[11px] text-black">{fewerSignals ? "On" : "Off"}</span>
           </button>
-          <button
-            type="button"
-            onClick={() => setShowNeighborhoodView((v) => !v)}
-            className={`flex items-center justify-between rounded-md border px-3 py-1.5 text-left text-sm transition-colors ${
-              showNeighborhoodView
-                ? "border-red-600 bg-red-50 text-black"
-                : "border-slate-200 bg-white text-black hover:bg-slate-50"
-            }`}
-          >
-            <span className="font-medium">Neighborhood view</span>
-            <span className="text-[11px] text-black">
-              {showNeighborhoodView ? "Hide" : "Show dangerous areas"}
-            </span>
-          </button>
+          {region.safetyData && (
+            <button
+              type="button"
+              onClick={() => setShowNeighborhoodView((v) => !v)}
+              className={`flex items-center justify-between rounded-md border px-3 py-1.5 text-left text-sm transition-colors ${
+                showNeighborhoodView
+                  ? "border-red-600 bg-red-50 text-black"
+                  : "border-slate-200 bg-white text-black hover:bg-slate-50"
+              }`}
+            >
+              <span className="font-medium">Neighborhood view</span>
+              <span className="text-[11px] text-black">
+                {showNeighborhoodView ? "Hide" : "Show dangerous areas"}
+              </span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setShowPlaces((v) => !v)}
@@ -1140,7 +1207,7 @@ export default function Home() {
           <div className="flex flex-col gap-1.5" data-testid="interests">
             <span className="text-xs font-semibold uppercase tracking-wide text-black">What do you like?</span>
             <div className="flex flex-wrap gap-1">
-              {INTERESTS.map((i) => {
+              {INTERESTS.filter((i) => !region.hiddenInterests?.includes(i.id)).map((i) => {
                 const on = interests.includes(i.id);
                 return (
                   <button
@@ -1232,7 +1299,7 @@ export default function Home() {
                     <span className="flex flex-col">
                       <span className="font-medium">{tab.kind === "interest" ? tab.label : (route?.label ?? tab.label)}</span>
                       <span className="text-[10px] text-black/55">
-                        {route && hiddenRoutes.includes(tab.kind) ? "Removed from map \u00b7 click to show" : tab.hint}
+                        {route && hiddenRoutes.includes(tab.kind) ? "Removed from map \u00b7 click to show" : ((!region.safetyData && tab.hintNoSafetyData) || tab.hint)}
                       </span>
                     </span>
                     <span className="text-[11px] text-black">
@@ -1360,7 +1427,9 @@ export default function Home() {
                         ["Traffic lights", String(editOriginal.trafficSignals), String(draftRoute.trafficSignals)],
                         ["Climbing", `${Math.round(editOriginal.elevationGainMeters * 3.281)} ft`, `${Math.round(draftRoute.elevationGainMeters * 3.281)} ft`],
                         ["Dropping", `${Math.round(editOriginal.elevationLossMeters * 3.281)} ft`, `${Math.round(draftRoute.elevationLossMeters * 3.281)} ft`],
-                        ["In flagged areas", `${metersToMiles(editOriginal.metersInFlaggedAreas)} mi`, `${metersToMiles(draftRoute.metersInFlaggedAreas)} mi`],
+                        ...(region.safetyData
+                          ? [["In flagged areas", `${metersToMiles(editOriginal.metersInFlaggedAreas)} mi`, `${metersToMiles(draftRoute.metersInFlaggedAreas)} mi`]]
+                          : []),
                       ].map(([k, a, b]) => (
                         <tr key={k}>
                           <td>{k}</td>
@@ -1494,7 +1563,7 @@ export default function Home() {
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span>Danger score (avg)</span>
+                  <span>{region.safetyData ? "Danger score (avg)" : "Street score (avg)"}</span>
                   <span className="font-medium">{activeRoute.meanDanger}</span>
                 </div>
                 <div className="flex justify-between">
@@ -1534,26 +1603,28 @@ export default function Home() {
                     {activeRoute.maxDownGradePercent}% ({percentToDegrees(activeRoute.maxDownGradePercent).toFixed(1)}°)
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Inside flagged areas</span>
-                  <span className="font-medium">
-                    {metersToMiles(activeRoute.metersInFlaggedAreas)} mi (
-                    {Math.round(
-                      (activeRoute.metersInFlaggedAreas / Math.max(1, activeRoute.distanceMeters)) *
-                        100
-                    )}
-                    %)
-                  </span>
-                </div>
+                {region.safetyData && (
+                  <div className="flex justify-between">
+                    <span>Inside flagged areas</span>
+                    <span className="font-medium">
+                      {metersToMiles(activeRoute.metersInFlaggedAreas)} mi (
+                      {Math.round(
+                        (activeRoute.metersInFlaggedAreas / Math.max(1, activeRoute.distanceMeters)) *
+                          100
+                      )}
+                      %)
+                    </span>
+                  </div>
+                )}
 
                 {/best effort/i.test(activeRoute.label) && (
                   <p
                     role="note"
                     className="mt-1 rounded-md border border-slate-300 bg-slate-100 px-2 py-1.5 leading-snug text-slate-800"
                   >
-                    Your start or destination is inside a flagged area, so this route
-                    couldn&apos;t avoid every one. It avoids as much as the street network
-                    allows.
+                    {region.safetyData
+                      ? "Your start or destination is inside a flagged area, so this route couldn't avoid every one. It avoids as much as the street network allows."
+                      : "No route stays on calm streets the whole way here, so this one uses busier roads where it has to."}
                   </p>
                 )}
 
@@ -1590,11 +1661,16 @@ export default function Home() {
                 {selectedRouteKind !== "fastest" && routes.fastest && (
                   <p className="mt-1 font-medium">
                     {percentLessDanger(routes.fastest, activeRoute) > 0
-                      ? `${percentLessDanger(routes.fastest, activeRoute)}% less average danger than the fastest route.`
-                      : "No safer than the fastest route here - it was already about as good as the network allows."}
+                      ? region.safetyData
+                        ? `${percentLessDanger(routes.fastest, activeRoute)}% less average danger than the fastest route.`
+                        : `${percentLessDanger(routes.fastest, activeRoute)}% better street score than the fastest route (lanes and road type).`
+                      : region.safetyData
+                        ? "No safer than the fastest route here - it was already about as good as the network allows."
+                        : "No calmer than the fastest route here - it was already about as good as the network allows."}
                   </p>
                 )}
 
+                {region.safetyData && (
                 <div className="mt-1 flex flex-col gap-0.5 border-t border-slate-200 pt-1.5">
                   <span className="font-semibold">Flagged areas this route enters</span>
                   {activeRoute.neighborhoodsEntered.length > 0 ? (
@@ -1623,6 +1699,7 @@ export default function Home() {
                     <span className="text-black/60">None - this route stays clear of all of them.</span>
                   )}
                 </div>
+                )}
 
                 {activeRoute.streets.length > 0 && (
                   <details className="mt-1 border-t border-slate-200 pt-1.5">
@@ -1744,7 +1821,7 @@ export default function Home() {
       {/* relative so the 3D tour overlay can position against the map area */}
       <main className="relative min-h-0 flex-1">
         <MapView
-          center={data?.city.center ?? { lat: 37.7749, lng: -122.4194 }}
+          center={region.center}
           isLoaded={isLoaded}
           origin={origin}
           destination={destination}

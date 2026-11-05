@@ -18,7 +18,8 @@
     "data:fetch-elevation": "node scripts/fetchSfElevation.mjs",
     "data:fetch-pois": "node scripts/fetchSfPois.mjs",
     "data:import-crashes": "node scripts/importSfBikeCrashes.mjs",
-    "data:import-signals": "node scripts/importTrafficSignals.mjs"
+    "data:import-signals": "node scripts/importTrafficSignals.mjs",
+    "data:san-jose": "node scripts/fetchSfBikeGraph.mjs --region=sanjose && node scripts/fetchSfElevation.mjs --region=sanjose && node scripts/importSanJoseData.mjs && node scripts/fetchSfPois.mjs --region=sanjose"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.89",
@@ -28,6 +29,7 @@
     "next": "16.2.12",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "three": "^0.187.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -35,6 +37,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "^0.187.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
     "playwright": "^1.63.0",

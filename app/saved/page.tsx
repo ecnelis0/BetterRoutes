@@ -20,6 +20,8 @@ import { describeRoute } from "@/lib/ui/routeDescription";
 import { rideMinutes } from "@/lib/ui/rideTime";
 import { useTestMode } from "@/lib/ui/useTestMode";
 
+import { DEFAULT_REGION, REGIONS } from "@/lib/data/regions";
+
 const Route3DTour = dynamic(() => import("@/components/Route3DTour"), { ssr: false });
 const NavigationView = dynamic(() => import("@/components/NavigationView"), { ssr: false });
 
@@ -117,7 +119,7 @@ function Saved() {
 
       <main className="relative min-h-0 flex-1">
         <MapView
-          center={{ lat: 37.7749, lng: -122.4194 }}
+          center={open?.from.point ?? REGIONS[DEFAULT_REGION].center}
           isLoaded={isLoaded}
           origin={open?.from.point ?? null}
           destination={open?.to.point ?? null}

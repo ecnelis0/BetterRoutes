@@ -12,17 +12,16 @@
  * nothing errors. Keeping exactly one implementation of the feature maths
  * makes that class of bug impossible rather than merely unlikely.
  *
- * Run: npm run ml:export-features
- * Out: ml/data/edge_features.csv
+ * Run: npm run ml:export-features [-- --region=sanjose]
+ * Out: ml/data/edge_features.csv, or ml/data/<region>/edge_features.csv
  */
 import { writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { REAL_SF_BIKE_CRASHES } from "../lib/dataSources/sfBikeCrashes";
-import { REAL_SF_HIGHWAYS } from "../lib/dataSources/sfHighways";
-import { REAL_SF_BIKE_LANES } from "../lib/dataSources/sfmtaBikeLanes";
-import { applySfmtaLaneTiers } from "../lib/scoring/laneMatch";
+import { DEFAULT_REGION, isRegionId, type RegionId } from "../lib/data/regions";
+import { loadRegionData } from "../lib/routing/regionData";
+import { applyLaneTiers } from "../lib/scoring/laneMatch";
 import {
   FEATURE_ORDER,
   FEATURE_SET_VERSION,
@@ -31,22 +30,25 @@ import {
 } from "../lib/scoring/features";
 import { decodeGraph } from "../lib/routing/graph";
 import { BASELINE_COEFFICIENTS, BASELINE_INTERCEPT } from "../lib/scoring/model";
-import rawGraph from "../lib/data/sfBikeGraph.json";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 function main() {
-  const graph = decodeGraph(rawGraph as Parameters<typeof decodeGraph>[0]);
+  const arg = process.argv.find((a) => a.startsWith("--region="))?.slice("--region=".length);
+  if (arg && !isRegionId(arg)) throw new Error(`Unknown region "${arg}".`);
+  const region: RegionId = isRegionId(arg) ? arg : DEFAULT_REGION;
+  const data = loadRegionData(region);
+  const graph = decodeGraph(data.rawGraph as Parameters<typeof decodeGraph>[0]);
   // Identical correction to the one getRoutingEngine applies - otherwise
   // the model trains on OSM tiers and serves on SFMTA tiers, which is
   // train/serve skew of exactly the kind this pipeline is built to avoid.
-  const laneMatch = applySfmtaLaneTiers(graph.edges, graph.nodes, REAL_SF_BIKE_LANES);
+  const laneMatch = applyLaneTiers(graph.edges, graph.nodes, data.lanes, { strict: data.strictLaneMatch });
   process.stdout.write(
-    `SFMTA lane reconciliation: matched ${laneMatch.matched}, changed ${laneMatch.changed}, ` +
+    `City lane reconciliation: matched ${laneMatch.matched}, changed ${laneMatch.changed}, ` +
       `upgraded to protected ${laneMatch.upgradedToProtected}\n`
   );
 
-  const ctx = buildFeatureContext(REAL_SF_BIKE_CRASHES, REAL_SF_HIGHWAYS, graph.nodes);
+  const ctx = buildFeatureContext(data.crashes, data.highways, graph.nodes, data.neighborhoods);
 
   // Identifying columns first, then the feature vector in FEATURE_ORDER.
   // `edge_id` is what a precomputed score table is keyed by, and
@@ -94,7 +96,7 @@ function main() {
     );
   }
 
-  const outDir = path.join(here, "..", "ml", "data");
+  const outDir = path.join(here, "..", "ml", "data", ...(region === DEFAULT_REGION ? [] : [region]));
   mkdirSync(outDir, { recursive: true });
   const outPath = path.join(outDir, "edge_features.csv");
   writeFileSync(outPath, rows.join("\n") + "\n");

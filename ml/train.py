@@ -38,6 +38,18 @@ FEATURE_META = ROOT / "ml" / "data" / "feature_meta.json"
 LABELS_CSV = ROOT / "ml" / "data" / "labels.csv"
 OUT_ARTIFACT = ROOT / "lib" / "data" / "model" / "safety-model.json"
 
+
+def use_region(region: str) -> None:
+    """Points the paths above at one region's files. SF keeps the original flat ones."""
+    global FEATURES_CSV, FEATURE_META, LABELS_CSV, OUT_ARTIFACT
+    if region == "sf":
+        return
+    data = ROOT / "ml" / "data" / region
+    FEATURES_CSV = data / "edge_features.csv"
+    FEATURE_META = data / "feature_meta.json"
+    LABELS_CSV = data / "labels.csv"
+    OUT_ARTIFACT = ROOT / "lib" / "data" / "model" / f"{region}-safety-model.json"
+
 # The baseline's weights are read from feature_meta.json, which the export
 # writes straight from lib/scoring/model.ts - one source of truth. (This
 # file used to keep a hand-copied duplicate, which went stale the moment
@@ -120,7 +132,9 @@ def main() -> None:
         help="ridge exports interpretable coefficients; gbt exports a score table.",
     )
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--region", default="sf", help="Which region's features to train on.")
     args = ap.parse_args()
+    use_region(args.region)
 
     meta = load_meta()
     feature_order: list[str] = meta["featureOrder"]

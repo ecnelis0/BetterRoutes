@@ -6,7 +6,9 @@ import {
   SIGNAL_WAIT_SECONDS,
   exemptAreaBits,
   exemptHotspots,
+  engineForTrip,
   getRoutingEngine,
+  type RoutingEngine,
   MAX_CUSTOM_WAYPOINTS,
   planCustomPath,
   routePathFromLatLngs,
@@ -81,8 +83,7 @@ interface SectionStats {
   steepest: number;
 }
 
-function sectionStats(edges: GraphEdge[], exempt: number, hotExempt: Set<number> = new Set()): SectionStats {
-  const eng = getRoutingEngine();
+function sectionStats(eng: RoutingEngine, edges: GraphEdge[], exempt: number, hotExempt: Set<number> = new Set()): SectionStats {
   const st: SectionStats = {
     meters: 0,
     climb: 0,
@@ -165,8 +166,7 @@ export function divergences(base: number[], cand: number[]): Divergence[] {
 }
 
 /** The base route with base[bs..be] replaced by cand[cs..ce]. */
-export function splice(base: RoutePath, cand: RoutePath, d: Divergence): RoutePath {
-  const eng = getRoutingEngine();
+export function splice(base: RoutePath, cand: RoutePath, d: Divergence, eng: RoutingEngine = getRoutingEngine()): RoutePath {
   const edges = [...base.edges.slice(0, d.bs), ...cand.edges.slice(d.cs, d.ce), ...base.edges.slice(d.be)];
   const nodes = [edges[0].from, ...edges.map((e) => e.to)];
   return {
@@ -278,7 +278,7 @@ export function suggestEdits(
    */
   basePath?: LatLng[]
 ): SuggestedEdit[] {
-  const eng = getRoutingEngine();
+  const eng = engineForTrip([origin, destination, ...waypoints]);
   const planned: CustomPlan = planCustomPath(origin, destination, waypoints, profileId, options);
   const shown = basePath ? routePathFromLatLngs(basePath) : null;
   const base: CustomPlan = shown ? { ...planned, path: shown } : planned;
@@ -311,11 +311,11 @@ export function suggestEdits(
         for (const d of divergences(baseNodes, nodesOf(cand.path))) {
           const bEdges = base.path.edges.slice(d.bs, d.be);
           const cEdges = cand.path.edges.slice(d.cs, d.ce);
-          const bStats = sectionStats(bEdges, exempt, hotExempt);
+          const bStats = sectionStats(eng, bEdges, exempt, hotExempt);
           if (bStats.meters < 80 && cEdges.reduce((t, e) => t + e.lengthMeters, 0) < 80) continue;
           // The hard rule: never into a Severe area the trip does not start or end in.
           if (cEdges.some((e) => (eng.areaMask[e.id] & severeBits & ~exempt) !== 0)) continue;
-          const verdict = judge(bStats, sectionStats(cEdges, exempt, hotExempt), viaStreets(cEdges, bEdges));
+          const verdict = judge(bStats, sectionStats(eng, cEdges, exempt, hotExempt), viaStreets(cEdges, bEdges));
           if (!verdict) continue;
           found.push({ ...verdict, d, cand: cand.path, signature: cEdges.map((e) => e.id).join(",") });
         }
@@ -337,7 +337,7 @@ export function suggestEdits(
   }
 
   return kept.map((f, n) => {
-    const spliced = splice(base.path, f.cand, f.d);
+    const spliced = splice(base.path, f.cand, f.d, eng);
     const section = f.cand.edges.slice(f.d.cs, f.d.ce);
     const sectionPath = [eng.graph.nodes[section[0].from], ...section.map((e) => eng.graph.nodes[e.to])];
     const replaced = base.path.edges.slice(f.d.bs, f.d.be);

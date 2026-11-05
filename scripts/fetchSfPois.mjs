@@ -7,16 +7,20 @@
  * "is it actually good" are what the planned Google-backed AI step adds;
  * this gives the planner real places to route past today.
  *
- * Run: npm run data:fetch-pois
- * Out: lib/data/sfPois.json
+ * Run: npm run data:fetch-pois [-- --region=sanjose]
+ * Out: lib/data/sfPois.json, or lib/data/<region>/pois.json
  */
-import { writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { dataPath, regionArg } from "./regionConfig.mjs";
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const OUT = path.join(here, "..", "lib", "data", "sfPois.json");
-const BBOX = "37.70,-122.52,37.835,-122.355"; // San Francisco
+const REGION = regionArg();
+const OUT = dataPath(REGION.id, "pois");
+// SF's box runs a little past the routing graph, up to the Golden Gate.
+const BBOX =
+  REGION.id === "sf"
+    ? "37.70,-122.52,37.835,-122.355"
+    : `${REGION.bounds.south},${REGION.bounds.west},${REGION.bounds.north},${REGION.bounds.east}`;
 const ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.private.coffee/api/interpreter",
@@ -32,7 +36,31 @@ const CATEGORIES = {
   park: ['nwr["leisure"="park"]["name"]'],
   viewpoint: ['nwr["tourism"="viewpoint"]'],
   art: ['nwr["tourism"="artwork"]'],
+  landmark: [
+    'nwr["tourism"~"^(museum|attraction|gallery|zoo|theme_park)$"]',
+    'nwr["historic"~"^(monument|building|castle|ruins|archaeological_site|mission|memorial|ship|farm)$"]',
+    'nwr["amenity"~"^(theatre|arts_centre|planetarium)$"]',
+    'nwr["leisure"="stadium"]',
+  ],
 };
+
+// `--only=park,landmark` refreshes those and keeps the rest of the file.
+const ONLY = process.argv.find((a) => a.startsWith("--only="))?.slice("--only=".length).split(",");
+
+// A rider picking "Parks" expects a park. Lone points tagged leisure=park are
+// mostly furniture and fitness stations ("Picnic Bench", "Exercise Bar"); a real
+// park is drawn as an area, and these names are never one either way.
+const NOT_REALLY_A_PLACE =
+  /\b(bench|exercise bar|picnic|parking|restroom|toilet|fitness station|parklet|private|plaque)\b/i;
+
+function keep(category, el, name) {
+  if (REGION.id === "sf") return true;
+  if (NOT_REALLY_A_PLACE.test(name)) return false;
+  if (category === "park" && el.type === "node") return false;
+  // Individual rides inside a theme park ("RailBlazer"): the park is the place.
+  if (category === "landmark" && el.tags?.attraction) return false;
+  return true;
+}
 
 async function overpass(query) {
   // Public Overpass servers answer 502/504 under load; a few rounds with a
@@ -64,9 +92,13 @@ async function overpass(query) {
 }
 
 async function main() {
-  const pois = [];
+  const previous = ONLY ? JSON.parse(readFileSync(OUT, "utf8")).pois : [];
+  const pois = previous.filter((p) => !ONLY?.includes(p.category));
   const seen = new Set();
   for (const [category, selectors] of Object.entries(CATEGORIES)) {
+    if (ONLY && !ONLY.includes(category)) continue;
+    // SF's file predates landmarks and its published results stand on it as is.
+    if (REGION.id === "sf" && category === "landmark") continue;
     const body = selectors.map((s) => `${s}(${BBOX});`).join("");
     const json = await overpass(`[out:json][timeout:90];(${body});out center tags;`);
     let kept = 0;
@@ -75,7 +107,7 @@ async function main() {
       const lng = el.lon ?? el.center?.lon;
       const name = el.tags?.name;
       // Unnamed places cannot be labelled on a route, so are not useful here.
-      if (lat == null || lng == null || !name) continue;
+      if (lat == null || lng == null || !name || !keep(category, el, name)) continue;
       const key = `${category}:${el.type}/${el.id}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -85,12 +117,14 @@ async function main() {
         name,
         lat: Math.round(lat * 1e6) / 1e6,
         lng: Math.round(lng * 1e6) / 1e6,
+        ...(REGION.id !== "sf" && (el.tags.wikipedia || el.tags.wikidata) ? { notable: true } : {}),
       });
       kept++;
     }
     process.stdout.write(`${category}: ${kept}\n`);
     await new Promise((r) => setTimeout(r, 1500)); // be polite to the public server
   }
+  mkdirSync(path.dirname(OUT), { recursive: true });
   writeFileSync(
     OUT,
     JSON.stringify({ source: "OpenStreetMap via Overpass (ODbL)", fetchedAt: new Date().toISOString(), count: pois.length, pois })

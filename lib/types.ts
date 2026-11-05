@@ -30,6 +30,8 @@ export interface BikeLaneSegment {
   name: string;
   path: LatLng[];
   tier: BikeLaneTier;
+  /** A path with its own right-of-way (Class 1) rather than a lane on a street. */
+  offStreet?: boolean;
 }
 
 export type HighwaySegmentType = "freeway" | "arterial";

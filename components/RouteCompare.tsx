@@ -157,7 +157,7 @@ export default function RouteCompare({
         {/* Stat rows */}
         {rows.map((row) => [
           <div key={`${row.label}-h`} role="rowheader" className="border-t border-slate-100 py-1.5 font-medium text-slate-600">
-            {row.label}
+            {row.label === "Danger (avg)" && items[0]?.route.noSafetyData ? "Street score (avg)" : row.label}
           </div>,
           ...row.values.map((v, i) => {
             const best = row.best.includes(i);

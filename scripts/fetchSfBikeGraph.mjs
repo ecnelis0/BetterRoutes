@@ -16,14 +16,16 @@
 // failure this whole app exists to prevent); they still matter as a
 // *proximity* risk input, which is what `fetchSfRoads.mjs` already covers.
 //
-// Re-run manually: `node scripts/fetchSfBikeGraph.mjs`
-// Output: lib/data/sfBikeGraph.json
+// Re-run manually: `node scripts/fetchSfBikeGraph.mjs [--region=sanjose]`
+// Output: lib/data/sfBikeGraph.json, or lib/data/<region>/bikeGraph.json
 
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { dataPath, regionArg } from "./regionConfig.mjs";
 
-const BOUNDS = { north: 37.812, south: 37.705, east: -122.355, west: -122.515 };
+const REGION = regionArg();
+const BOUNDS = REGION.bounds;
 
 const OVERPASS_ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
@@ -84,9 +86,9 @@ const DEFAULT_SPEED_MPH = { freeway: 60, arterial: 35 };
 function overpassQuery() {
   const bbox = `${BOUNDS.south},${BOUNDS.west},${BOUNDS.north},${BOUNDS.east}`;
   return `
-[out:json][timeout:180];
+[out:json][timeout:300][maxsize:1073741824];
 (
-  way["highway"](${bbox});
+  way["highway"~"^(${[...Object.keys(ROUTABLE_HIGHWAY), ...BANNED_HIGHWAY].join("|")})$"](${bbox});
 );
 out body geom;
 `.trim();
@@ -150,18 +152,54 @@ function bikeLaneTierFromTags(tags) {
   const t = (k) => (tags[k] ?? "").toLowerCase();
 
   if (t("highway") === "cycleway") return "fullyProtected";
+  // A designated shared path is a car-free bike route. Outside a city's own
+  // survey this tag is all that says so: Los Gatos Creek Trail through
+  // Campbell is highway=path, not highway=cycleway.
+  if (t("highway") === "path" && t("bicycle") === "designated") return "fullyProtected";
   // Explicit physical separation.
   const sep = [t("cycleway"), t("cycleway:both"), t("cycleway:left"), t("cycleway:right")];
   if (sep.some((v) => v === "track")) return "fullyProtected";
   if (t("cycleway:both:separation") || t("cycleway:separation")) return "fullyProtected";
+  for (const side of ["left", "right"]) {
+    const v = t(`cycleway:${side}:separation`);
+    if (v && v !== "no") return "fullyProtected";
+  }
   if (sep.some((v) => v === "lane" || v === "opposite_lane")) {
     // A buffered lane is meaningfully better than bare paint.
     const buffered =
-      t("cycleway:both:buffer") || t("cycleway:buffer") || t("cycleway:lane") === "exclusive";
+      t("cycleway:both:buffer") ||
+      t("cycleway:buffer") ||
+      t("cycleway:lane") === "exclusive" ||
+      ["left", "right"].some((side) => {
+        const v = t(`cycleway:${side}:buffer`);
+        return v && v !== "no";
+      });
     return buffered ? "semiProtected" : "unprotected";
   }
   if (sep.some((v) => v === "shared_lane" || v === "share_busway")) return "unprotected";
   return "none";
+}
+
+// "Avoid all forms of freeway": county expressways are often tagged as ordinary
+// primary roads (18 miles of Almaden Expressway were routable, and Fastest used
+// it), so the name is what gives them away. Old Bayshore Highway and the like are
+// ordinary streets named after what they replaced, so "highway" is not matched.
+const FREEWAY_NAME = /\b(expressway|expwy|expy|freeway|fwy)\b/i;
+// Sidewalk-side paths and cycleways near these keep their own class and stay usable.
+const CAR_FREE_HIGHWAY = new Set(["cycleway", "path", "footway", "pedestrian", "track"]);
+
+/** A road a rider must never be sent along, in regions that take the strict reading. */
+function isFreewayLike(tags) {
+  return !CAR_FREE_HIGHWAY.has((tags.highway ?? "").toLowerCase()) && FREEWAY_NAME.test(tags.name ?? "");
+}
+
+const MINOR_SERVICE = new Set(["parking_aisle", "driveway", "drive-through", "emergency_access"]);
+
+function isPrivateOrParking(tags) {
+  if ((tags.highway ?? "") === "service" && MINOR_SERVICE.has((tags.service ?? "").toLowerCase())) return true;
+  const access = (tags.access ?? "").toLowerCase();
+  const bicycle = (tags.bicycle ?? "").toLowerCase();
+  return (access === "private" || access === "no") && bicycle !== "yes" && bicycle !== "designated";
 }
 
 function isOneway(tags) {
@@ -182,8 +220,71 @@ const RAW_CACHE = path.join(
   "..",
   "node_modules",
   ".cache",
-  "sf-overpass-raw.json"
+  `${REGION.id}-overpass-raw.json`
 );
+
+const ALONG_FREEWAY_METERS = 50;
+const ALONG_FREEWAY_MAX_ANGLE = 25;
+const MIN_EDGE_FOR_ANGLE_METERS = 10;
+
+/**
+ * Edges running beside a freeway, not merely near one: within 50m of its centre
+ * line and pointing the same way. An overpass or underpass crosses at an angle
+ * and is not caught, which matters because crossing is the only way across town.
+ */
+function edgesAlongFreeways(edges, nodes, exposureRoads) {
+  const CELL = 0.001; // ~100m, comfortably wider than the 50m search
+  const key = (lat, lng) => `${Math.floor(lat / CELL)},${Math.floor(lng / CELL)}`;
+  const grid = new Map();
+  for (const road of exposureRoads) {
+    if (road.type !== "freeway") continue;
+    for (let i = 0; i < road.path.length - 1; i++) {
+      const a = road.path[i];
+      const b = road.path[i + 1];
+      const steps = Math.max(1, Math.ceil(haversineMeters(a, b) / 50));
+      for (let k = 0; k <= steps; k++) {
+        const c = key(a.lat + ((b.lat - a.lat) * k) / steps, a.lng + ((b.lng - a.lng) * k) / steps);
+        const list = grid.get(c);
+        if (!list) grid.set(c, [[a, b]]);
+        else if (list[list.length - 1][0] !== a) list.push([a, b]);
+      }
+    }
+  }
+  const cos = Math.cos((((BOUNDS.north + BOUNDS.south) / 2) * Math.PI) / 180);
+  const M = 111_320;
+  const out = [];
+  edges.forEach((e, index) => {
+    if (e.lengthMeters < MIN_EDGE_FOR_ANGLE_METERS) return;
+    const p = nodes.get(e.from);
+    const q = nodes.get(e.to);
+    const mid = { lat: (p.lat + q.lat) / 2, lng: (p.lng + q.lng) / 2 };
+    const r0 = Math.floor(mid.lat / CELL);
+    const c0 = Math.floor(mid.lng / CELL);
+    const edgeAngle = Math.atan2(q.lat - p.lat, (q.lng - p.lng) * cos);
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        for (const [a, b] of grid.get(`${r0 + dr},${c0 + dc}`) ?? []) {
+          // Distance from the midpoint to the segment, in a local flat frame.
+          const ax = (a.lng - mid.lng) * M * cos;
+          const ay = (a.lat - mid.lat) * M;
+          const bx = (b.lng - mid.lng) * M * cos;
+          const by = (b.lat - mid.lat) * M;
+          const dx = bx - ax;
+          const dy = by - ay;
+          const t = Math.max(0, Math.min(1, -(ax * dx + ay * dy) / (dx * dx + dy * dy || 1)));
+          if (Math.hypot(ax + dx * t, ay + dy * t) > ALONG_FREEWAY_METERS) continue;
+          let diff = (Math.abs(edgeAngle - Math.atan2(dy, dx)) * 180) / Math.PI;
+          diff %= 180;
+          if (Math.min(diff, 180 - diff) <= ALONG_FREEWAY_MAX_ANGLE) {
+            out.push(index);
+            return;
+          }
+        }
+      }
+    }
+  });
+  return out;
+}
 
 async function loadElements() {
   const refresh = process.argv.includes("--refresh");
@@ -206,6 +307,10 @@ function main() {
     let skippedUnroutable = 0;
 
     const exposureRoads = [];
+    // Nodes on a raised deck or in a tunnel, and nodes also on ordinary road:
+    // a node only on the former is off the ground, so terrain data is wrong there.
+    const onSpan = new Set();
+    const onGround = new Set();
 
     for (const el of elements) {
       if (el.type !== "way" || !el.geometry || !el.nodes) continue;
@@ -216,7 +321,8 @@ function main() {
       // them - freeways in particular are *excluded from the graph* yet are
       // the single biggest exposure risk, so they must be captured here or
       // they are lost entirely.
-      const exposure = EXPOSURE_CLASS[hw];
+      const strictFreeway = REGION.id !== "sf" && isFreewayLike(tags);
+      const exposure = strictFreeway ? "freeway" : EXPOSURE_CLASS[hw];
       if (exposure) {
         const mph =
           parseInt((tags.maxspeed ?? "").replace(/[^0-9]/g, ""), 10) ||
@@ -233,7 +339,7 @@ function main() {
         });
       }
 
-      if (BANNED_HIGHWAY.has(hw)) {
+      if (BANNED_HIGHWAY.has(hw) || strictFreeway) {
         skippedBanned++;
         continue;
       }
@@ -253,10 +359,23 @@ function main() {
         continue;
       }
 
+      // Suburban Bay Area streets are lined with parking lots: unfiltered,
+      // parking aisles and driveways were 43% of San Jose's segments, tripling
+      // the graph for roads no bike route should use. SF's graph and its
+      // trained scores stay as they were built, so only newer regions drop them.
+      if (REGION.id !== "sf" && isPrivateOrParking(tags)) {
+        skippedUnroutable++;
+        continue;
+      }
+
       const tier = bikeLaneTierFromTags(tags);
       const oneway = isOneway(tags);
       const name = tags.name ?? null;
       const maxspeed = parseInt((tags.maxspeed ?? "").replace(/[^0-9]/g, ""), 10) || null;
+
+      const isSpan =
+        (tags.bridge && tags.bridge !== "no") || (tags.tunnel && tags.tunnel !== "no") || tags.covered === "yes";
+      for (const id of el.nodes) (isSpan ? onSpan : onGround).add(id);
 
       // Split the way at every OSM node: those shared nodes ARE the
       // intersections, and keeping them is the whole point of this file.
@@ -290,6 +409,9 @@ function main() {
       }
     }
 
+    const alongFreeway = REGION.id === "sf" ? [] : edgesAlongFreeways(edges, nodes, exposureRoads);
+    process.stdout.write(`Edges running alongside a freeway: ${alongFreeway.length}\n`);
+
     // Drop nodes no surviving edge references (cheap, keeps the file honest).
     const used = new Set();
     for (const e of edges) {
@@ -298,10 +420,8 @@ function main() {
     }
     const nodeList = [...nodes.values()].filter((n) => used.has(n.id));
 
-    const here = path.dirname(fileURLToPath(import.meta.url));
-    const outDir = path.join(here, "..", "lib", "data");
-    mkdirSync(outDir, { recursive: true });
-    const outPath = path.join(outDir, "sfBikeGraph.json");
+    const outPath = dataPath(REGION.id, "graph");
+    mkdirSync(path.dirname(outPath), { recursive: true });
 
     // Compact columnar encoding. The obvious `[{from, to, roadClass, ...}]`
     // shape repeats ~120 bytes of JSON *key names* on every one of 128k
@@ -342,10 +462,14 @@ function main() {
       oneway: edges.map((e) => (e.oneway ? 1 : 0)),
       maxspeed: edges.map((e) => e.maxspeed ?? 0),
       lengthMeters: edges.map((e) => Math.round(e.lengthMeters * 10) / 10),
+      // Edge indexes the router charges heavily for: see `edgesAlongFreeways`.
+      alongFreeway,
+      // Read by fetchSfElevation.mjs. Absent from SF's graph, which predates it.
+      spanNodes: nodeList.flatMap((n, i) => (onSpan.has(n.id) && !onGround.has(n.id) ? [i] : [])),
     };
     writeFileSync(outPath, JSON.stringify(payload));
 
-    const hwPath = path.join(outDir, "sfHighways.json");
+    const hwPath = dataPath(REGION.id, "highways");
     writeFileSync(
       hwPath,
       JSON.stringify({

@@ -1,3 +1,4 @@
+import type { RegionId } from "../data/regions";
 import type { InterestId } from "../interests/catalog";
 import type { LatLng } from "../types";
 
@@ -45,6 +46,8 @@ export interface ForYouStop {
 
 /** What the assistant is told about the screen, so it can answer "why" questions. */
 export interface AssistantContext {
+  /** Where the rider is planning. Absent means the default region. */
+  region?: RegionId;
   from: string | null;
   to: string | null;
   settings: { avoidHills: boolean; fewerLights: boolean };

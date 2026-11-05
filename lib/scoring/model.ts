@@ -90,6 +90,12 @@ export class PrecomputedScoreModel implements SafetyModel {
     private fallback: SafetyModel
   ) {}
 
+  /** The stored score, or null for the fallback - lets callers skip building features. */
+  storedScore(edgeId: number): number | null {
+    const s = this.scores[edgeId];
+    return Number.isFinite(s) && s >= 0 ? clamp100(s) : null;
+  }
+
   scoreByEdgeId(edgeId: number, features: EdgeFeatures): number {
     const s = this.scores[edgeId];
     return Number.isFinite(s) && s >= 0 ? clamp100(s) : this.fallback.score(features);

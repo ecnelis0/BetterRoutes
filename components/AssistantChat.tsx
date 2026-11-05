@@ -1,5 +1,6 @@
 "use client";
 
+import { DEFAULT_REGION, type RegionId } from "@/lib/data/regions";
 import { useRef, useState } from "react";
 import { describeActions, type AssistantAction, type AssistantContext, type ChatMessage } from "@/lib/assistant/actions";
 
@@ -14,11 +15,10 @@ interface Turn extends ChatMessage {
   changes?: string[];
 }
 
-const EXAMPLES = [
-  "Avoid hills and take me past a beach",
-  "Go via Ocean Beach",
-  "Why is Safest slower than Fastest?",
-];
+const EXAMPLES: Partial<Record<RegionId, string[]>> & { sf: string[] } = {
+  sf: ["Avoid hills and take me past a beach", "Go via Ocean Beach", "Why is Safest slower than Fastest?"],
+  sanjose: ["Avoid hills and take me past a park", "Go via Santana Row", "Why is Safest slower than Fastest?"],
+};
 
 export default function AssistantChat({
   context,
@@ -105,7 +105,7 @@ export default function AssistantChat({
           )}
           {turns.length === 0 && (
             <div className="flex flex-wrap gap-1">
-              {EXAMPLES.map((e) => (
+              {(EXAMPLES[context.region ?? DEFAULT_REGION] ?? EXAMPLES.sf).map((e) => (
                 <button
                   key={e}
                   type="button"
@@ -127,7 +127,7 @@ export default function AssistantChat({
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="e.g. flat ride past the ocean, boba on the way"
+              placeholder={context.region === "sanjose" ? "e.g. flat ride past a park, boba on the way" : "e.g. flat ride past the ocean, boba on the way"}
               aria-label="Message the route assistant"
               className="min-w-0 flex-1 rounded-md border border-violet-300 bg-white px-2 py-1.5 text-xs text-black"
             />

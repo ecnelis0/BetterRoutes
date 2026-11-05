@@ -103,6 +103,32 @@ You get three options for every trip: **Fastest**, **Safest** and **Safest + bik
 
 ![Turn-by-turn navigation](docs/screenshots/navigation.jpg)
 
+## Now in San José
+
+Pick **San José, CA** at the top of the sidebar for the same planner on a separate
+772,000-segment street graph, with the first step toward the whole Bay Area. Each
+region loads on first use.
+
+| Data | Source |
+|---|---|
+| 3,461 surveyed bikeway segments, built ones only | [City of San José Bikeways](https://geo.sanjoseca.gov/server/rest/services/OPN/OPN_OpenDataService/MapServer/418) |
+| 1,210 traffic signals | City of San José, City Owned Traffic Signals |
+| Streets, 4,151 real places including museums and landmarks | OpenStreetMap |
+| Elevation at every intersection, bridge decks spanned, spikes removed | USGS terrain (AWS Terrain Tiles) |
+
+No San José route rides on a freeway or expressway: those roads are not in its
+graph at all. Riding beside one costs heavily on every option, and any stretch
+that could not be avoided is reported on the route. Freeways can still be crossed
+by overpass or underpass, since that is the only way across town.
+
+San José routes use **no crash history or flagged neighbourhoods yet**, so the app
+makes no claims about either there: it favours protected lanes and calmer streets
+and says so.
+
+The 3D tour also gained a [three.js](https://threejs.org/) elevation layer, in every
+region: a curtain over the route, taller where the road is higher and coloured by
+grade, with a beacon on the rider.
+
 ## Built like a product
 
 - **411 automated tests** (Vitest). Many are checked by breaking the code on

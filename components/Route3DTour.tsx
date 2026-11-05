@@ -42,6 +42,9 @@ import ElevationPanel from "@/components/ElevationPanel";
 import { PlaceCard } from "@/components/MapView";
 import type { WikiPlace } from "@/lib/places/wikipedia";
 import { buildElevationProfile } from "@/lib/tour/elevationProfile";
+import { buildElevationRibbon, ELEVATION_LAYER_ID } from "@/lib/tour/elevationRibbon";
+import type { ElevationLayer } from "@/lib/tour/elevationLayer";
+import { DEFAULT_REGION, REGIONS, regionAt } from "@/lib/data/regions";
 
 /**
  * Cinematic 3D fly-through of a route, over real aerial imagery and real
@@ -95,6 +98,9 @@ const TOUR_MAX_SECONDS = 100;
 /** Playback speeds offered in the transport bar. */
 const TOUR_SPEEDS = [1, 2, 3] as const;
 
+/** Below this much climb from lowest to highest, the elevation pins are clutter. */
+const MIN_LABELLED_RELIEF_METERS = 8;
+
 function tourDurationSeconds(totalMeters: number): number {
   const scaled = TOUR_TARGET_SECONDS * Math.sqrt(Math.max(1, totalMeters) / 5000);
   return Math.min(TOUR_MAX_SECONDS, Math.max(TOUR_MIN_SECONDS, scaled));
@@ -114,6 +120,8 @@ export default function Route3DTour({
   places = null,
   onWantPlaces,
 }: Props) {
+  // The tour belongs to wherever the route is, so saved rides need no extra prop.
+  const region = REGIONS[regionAt(path[0]) ?? DEFAULT_REGION];
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
   const framesRef = useRef<CameraKeyframe[]>([]);
@@ -140,6 +148,9 @@ export default function Route3DTour({
   const [chromeVisible, setChromeVisible] = useState(true);
   const [realBuildings, setRealBuildings] = useState<number | null>(null);
   const [showTraffic, setShowTraffic] = useState(true);
+  const [showRibbon, setShowRibbon] = useState(true);
+  const showRibbonRef = useRef(true);
+  const elevationLayerRef = useRef<ElevationLayer | null>(null);
   // Mirrors trafficRef.current.length as state: the render needs to know
   // whether any traffic exists, and reading a ref during render is both a
   // React violation and genuinely stale (refs do not trigger re-renders).
@@ -196,6 +207,30 @@ export default function Route3DTour({
     () => (pathElevations ? buildElevationProfile(path, pathElevations) : null),
     [path, pathElevations]
   );
+  const ribbon = useMemo(() => buildElevationRibbon(path, pathElevations), [path, pathElevations]);
+  // Only where the climb is worth a label: "highest point" on a flat ride is noise.
+  const ribbonHasRelief = ribbon !== null && ribbon.highest.elevation - ribbon.lowest.elevation >= MIN_LABELLED_RELIEF_METERS;
+
+  // Highest and lowest point, pinned to the ground like the photo pins.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !showRibbon || !ribbon || !ribbonHasRelief) return;
+    const markers = [
+      { at: ribbon.highest, label: "Highest" },
+      { at: ribbon.lowest, label: "Lowest" },
+    ].map(({ at, label }) => {
+      const el = document.createElement("div");
+      el.dataset.testid = "tour-elevation-pin";
+      el.className =
+        "pointer-events-none whitespace-nowrap rounded-full bg-slate-950/85 px-2.5 py-1 text-xs font-medium text-white shadow-lg";
+      el.textContent = `${label} · ${Math.round(at.elevation * 3.28084).toLocaleString()} ft`;
+      return new Marker({ element: el, anchor: "bottom" }).setLngLat([at.lng, at.lat]).addTo(map);
+    });
+    return () => {
+      for (const m of markers) m.remove();
+    };
+  }, [ready, showRibbon, ribbon, ribbonHasRelief]);
+
   const currentStreet = currentStreetAt(streetSpans, metersDone);
   const annotations = useMemo(
     () => buildAnnotations(protectedSpans, avoidedNearby),
@@ -213,6 +248,7 @@ export default function Route3DTour({
       pitch: FLY_PITCH,
       zoom: FLY_ZOOM,
     });
+    elevationLayerRef.current?.setRider(frame.center, frame.distanceMeters);
     const src = map.getSource("tour-position") as GeoJSONSource | undefined;
     src?.setData({
       type: "Feature",
@@ -255,6 +291,26 @@ export default function Route3DTour({
         if (img) map.addImage("cyclist", img, { pixelRatio: 2 });
       }
       addTourLayers(map, { path, profile, pathElevations });
+
+      // Loaded on demand so three.js is only fetched by people who open a
+      // tour, and so if it cannot run here the tour simply goes on without it.
+      const ribbonNow = buildElevationRibbon(path, pathElevations);
+      if (ribbonNow) {
+        void import("@/lib/tour/elevationLayer")
+          .then(({ createElevationLayer }) => {
+            // Removed already (tour closed), or re-added by a later style switch.
+            if (mapRef.current !== map || map.getLayer(ELEVATION_LAYER_ID)) return;
+            const layer = createElevationLayer(ribbonNow, {
+              initialRiderMeters: sampleCameraPath(framesRef.current, progressRef.current)?.distanceMeters ?? 0,
+              visible: showRibbonRef.current,
+            });
+            elevationLayerRef.current = layer;
+            map.addLayer(layer);
+          })
+          .catch((err) => {
+            console.warn("3D elevation layer unavailable:", err);
+          });
+      }
     },
     [path, profile, pathElevations]
   );
@@ -272,13 +328,16 @@ export default function Route3DTour({
     cumRef.current = cumulativeDistances(path);
     // Deterministic: the same route lays out the same traffic every time,
     // so replays and screenshots stay comparable.
-    trafficRef.current = layOutTraffic(
-      classSpans.map((c) => ({
-        startMeters: c.startMeters,
-        endMeters: c.endMeters,
-        roadClass: c.roadClass as TrafficRoadClass,
-      }))
-    );
+    // Illustrative cars are for regions with the street data to back them up.
+    trafficRef.current = region.safetyData
+      ? layOutTraffic(
+          classSpans.map((c) => ({
+            startMeters: c.startMeters,
+            endMeters: c.endMeters,
+            roadClass: c.roadClass as TrafficRoadClass,
+          }))
+        )
+      : [];
     setTrafficCount(trafficRef.current.length);
     setTotalMeters(framesRef.current[framesRef.current.length - 1]?.distanceMeters ?? 0);
 
@@ -326,6 +385,8 @@ export default function Route3DTour({
       // is usable rather than before, so the tour is never blocked on a
       // third-party dataset - if it never arrives the tile buildings
       // stand and the view is merely less complete.
+      // That dataset is San Francisco's; elsewhere the tile buildings are it.
+      if (!region.safetyData) return;
       void fetchCorridorBuildings(path, abort.signal)
         .then((result) => {
           buildingsRef.current = result;
@@ -359,7 +420,7 @@ export default function Route3DTour({
       map.remove();
       mapRef.current = null;
     };
-  }, [path, classSpans, addOverlays]);
+  }, [path, classSpans, addOverlays, region]);
 
   // --- chrome auto-hide --------------------------------------------------
   useEffect(() => {
@@ -632,6 +693,7 @@ export default function Route3DTour({
             </button>
           ))}
         </div>
+        {trafficCount > 0 && (
         <button
           type="button"
           onClick={toggleTraffic}
@@ -644,6 +706,26 @@ export default function Route3DTour({
         >
           Traffic
         </button>
+        )}
+        {ribbon && (
+          <button
+            type="button"
+            onClick={() => {
+              const next = !showRibbon;
+              setShowRibbon(next);
+              showRibbonRef.current = next;
+              elevationLayerRef.current?.setVisible(next);
+            }}
+            aria-pressed={showRibbon}
+            className={`rounded-full border px-3 py-1.5 text-xs backdrop-blur transition-colors ${
+              showRibbon
+                ? "border-white/40 bg-white text-slate-900"
+                : "border-white/20 bg-slate-950/70 text-slate-200 hover:bg-white/10"
+            }`}
+          >
+            Elevation
+          </button>
+        )}
         {onWantPlaces && (
           <button
             type="button"

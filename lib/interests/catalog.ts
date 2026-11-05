@@ -3,7 +3,7 @@
  * pulls in the street graph and must stay on the server).
  */
 
-export type PlaceInterest = "beach" | "boba" | "coffee" | "food" | "park" | "viewpoint" | "art";
+export type PlaceInterest = "beach" | "boba" | "coffee" | "food" | "park" | "viewpoint" | "art" | "landmark";
 export type InterestId = PlaceInterest | "bikepaths";
 
 export const INTERESTS: { id: InterestId; label: string; emoji: string }[] = [
@@ -15,6 +15,7 @@ export const INTERESTS: { id: InterestId; label: string; emoji: string }[] = [
   { id: "park", label: "Parks", emoji: "🌳" },
   { id: "viewpoint", label: "Views", emoji: "🌉" },
   { id: "art", label: "Street art", emoji: "🎨" },
+  { id: "landmark", label: "Landmarks", emoji: "🏛️" },
 ];
 
 export interface Poi {
@@ -23,6 +24,8 @@ export interface Poi {
   name: string;
   lat: number;
   lng: number;
+  /** Has its own Wikipedia or Wikidata entry: preferred over an equally handy nobody. */
+  notable?: boolean;
 }
 
 /** The InterestRoute shape as it arrives in the browser. */

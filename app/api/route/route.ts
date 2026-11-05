@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { planRoutes, RoutingError, getRoutingEngine } from "@/lib/routing/service";
+import { planRoutes, RoutingError, engineForTrip } from "@/lib/routing/service";
 import type { LatLng } from "@/lib/types";
 
 /**
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       avoidElevation: avoidElevation === true,
       fewerSignals: fewerSignals === true,
     });
-    const engine = getRoutingEngine();
+    const engine = engineForTrip([origin, destination]);
     return NextResponse.json({
       routes,
       meta: {

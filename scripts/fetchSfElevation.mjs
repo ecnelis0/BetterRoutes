@@ -15,13 +15,14 @@
  * flat stretches they should be on. Elevation at each node gives the
  * grade of every individual block.
  *
- * Run: npm run data:fetch-elevation
- * Out: lib/data/sfNodeElevation.json
+ * Run: npm run data:fetch-elevation [-- --region=sanjose]
+ * Out: lib/data/sfNodeElevation.json, or lib/data/<region>/nodeElevation.json
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PNG } from "pngjs";
+import { dataPath, regionArg } from "./regionConfig.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, "..");
@@ -39,11 +40,20 @@ function latToTileY(lat, z) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Tiles do not change between runs, and iterating on the steps below should
+// not mean asking the public bucket for hundreds of them again.
+const TILE_CACHE = path.join(root, "node_modules", ".cache", "terrarium");
+
 async function fetchTile(x, y, attempt = 0) {
+  const cached = path.join(TILE_CACHE, `${Z}-${x}-${y}.png`);
+  if (existsSync(cached)) return PNG.sync.read(readFileSync(cached));
   try {
     const res = await fetch(TILE_URL(Z, x, y), { headers: { "User-Agent": UA } });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return PNG.sync.read(Buffer.from(await res.arrayBuffer()));
+    const bytes = Buffer.from(await res.arrayBuffer());
+    mkdirSync(TILE_CACHE, { recursive: true });
+    writeFileSync(cached, bytes);
+    return PNG.sync.read(bytes);
   } catch (e) {
     if (attempt >= 3) throw e;
     await sleep(1000 * (attempt + 1));
@@ -58,7 +68,8 @@ function decode(png, px, py) {
 }
 
 async function main() {
-  const raw = JSON.parse(readFileSync(path.join(root, "lib", "data", "sfBikeGraph.json"), "utf8"));
+  const regionId = regionArg().id;
+  const raw = JSON.parse(readFileSync(dataPath(regionId, "graph"), "utf8"));
   const n = raw.nodeCount;
 
   const xs = raw.lng.map((lng) => lngToTileX(lng, Z));
@@ -141,10 +152,11 @@ async function main() {
   }
   const SEA_LEVEL_DM = 0;
   let underwater = [];
-  for (let i = 0; i < n; i++) if (elevDm[i] < SEA_LEVEL_DM) underwater.push(i);
+  const spanNodes = new Set(raw.spanNodes ?? []);
+  for (let i = 0; i < n; i++) if (elevDm[i] < SEA_LEVEL_DM || spanNodes.has(i)) underwater.push(i);
   const bridgeNodes = underwater.length;
   const fixed = new Uint8Array(n);
-  for (let i = 0; i < n; i++) if (elevDm[i] >= SEA_LEVEL_DM) fixed[i] = 1;
+  for (let i = 0; i < n; i++) if (elevDm[i] >= SEA_LEVEL_DM && !spanNodes.has(i)) fixed[i] = 1;
   for (let pass = 0; pass < 500 && underwater.length > 0; pass++) {
     const next = [];
     for (const i of underwater) {
@@ -164,9 +176,33 @@ async function main() {
   for (const i of underwater) elevDm[i] = SEA_LEVEL_DM;
   process.stdout.write(`  bridge/pier nodes re-spanned from shore: ${bridgeNodes}\n`);
 
-  const outDir = path.join(root, "lib", "data");
-  mkdirSync(outDir, { recursive: true });
-  const out = path.join(outDir, "sfNodeElevation.json");
+  // SPIKES. On a flat valley floor one node can still read metres off its
+  // neighbours (45.9, 42.3, 45.7), where a culvert, sound wall or embankment
+  // lands in a 10m DEM cell. Over a 12m edge that is a fake 27% wall, which
+  // misleads "Avoid hills" and draws a cliff in the 3D view. A median of a
+  // node and its two neighbours removes a lone spike but leaves any steady
+  // grade exactly as it was, so real hills keep their climb. Only at through
+  // nodes: a junction has no single line to be a spike against. SF's heights
+  // and everything tuned on them stay as built.
+  if (regionId !== "sf") {
+    for (let pass = 0; pass < 2; pass++) {
+      const before = elevDm.slice();
+      let changed = 0;
+      for (let i = 0; i < n; i++) {
+        const nb = [...new Set(neighbours[i])];
+        if (nb.length !== 2) continue;
+        const median = [before[i], before[nb[0]], before[nb[1]]].sort((a, b) => a - b)[1];
+        if (median !== before[i]) {
+          elevDm[i] = median;
+          changed++;
+        }
+      }
+      process.stdout.write(`  spike pass ${pass + 1}: ${changed} through nodes adjusted\n`);
+    }
+  }
+
+  const out = dataPath(regionId, "elevation");
+  mkdirSync(path.dirname(out), { recursive: true });
   writeFileSync(
     out,
     JSON.stringify({

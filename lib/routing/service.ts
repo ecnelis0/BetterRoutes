@@ -1,25 +1,18 @@
 import { readFileSync } from "node:fs";
-import path from "node:path";
 
 import type { BikeLaneTier, DangerZone, LatLng } from "../types";
-import { REAL_SF_BIKE_CRASHES } from "../dataSources/sfBikeCrashes";
 import { computeCompositeDangerZones } from "../danger";
-import { REAL_SF_HIGHWAYS } from "../dataSources/sfHighways";
-import { REAL_SF_BIKE_LANES } from "../dataSources/sfmtaBikeLanes";
-import { applySfmtaLaneTiers, type LaneMatchStats } from "../scoring/laneMatch";
+import { applyLaneTiers, type LaneMatchStats } from "../scoring/laneMatch";
 import { buildFeatureContext, extractFeatures } from "../scoring/features";
 import { createBaselineModel, PrecomputedScoreModel, type SafetyModel } from "../scoring/model";
 import { loadModelArtifact } from "../scoring/artifact";
 import { decodeGraph, NodeSpatialIndex, type BikeGraph, type GraphEdge } from "./graph";
 import { findRoute, type RoutePath } from "./astar";
 import { ROUTE_PROFILES, type RouteProfile } from "./cost";
-import rawGraph from "../data/sfBikeGraph.json";
-import rawElevation from "../data/sfNodeElevation.json";
-import rawSignals from "../data/sfTrafficSignals.json";
+import { DEFAULT_REGION, REGIONS, regionAt, type RegionId } from "../data/regions";
+import { loadRegionData } from "./regionData";
 import {
   SEVERITY_MULTIPLIER,
-  SF_STEEP_AREAS,
-  SF_STEEP_STREETS,
   STEEP_GRADE_THRESHOLD,
   type SteepArea,
   type SteepSeverity,
@@ -39,6 +32,7 @@ import {
  * safe.
  */
 export interface RoutingEngine {
+  region: RegionId;
   graph: BikeGraph;
   index: NodeSpatialIndex;
   /** Danger score per directed edge id, 0-100. */
@@ -140,6 +134,20 @@ export function estimateSeconds(distanceMeters: number, climbedMeters: number, l
 }
 
 /** The time cost of one edge beyond its length, in flat-equivalent metres - for the Fastest search. */
+/**
+ * Extra metres per metre ridden beside a freeway, on every option including
+ * Fastest. Riding ON one is impossible: those roads are not in the graph. A
+ * charge rather than a block here, because a frontage road is sometimes the only
+ * way through and a rider stranded with no route is no better off. Each route
+ * reports whatever freeway-side riding it could not avoid.
+ */
+export const FREEWAY_SIDE_COST_PER_METRE = 5;
+
+function freewaySidePenalty(eng: RoutingEngine, edgeId: number): number {
+  const e = eng.graph.edges[edgeId];
+  return e.alongFreeway ? e.lengthMeters * FREEWAY_SIDE_COST_PER_METRE : 0;
+}
+
 function timePenaltyMeters(eng: RoutingEngine, edgeId: number): number {
   return (
     CLIMB_FLAT_EQUIVALENT_M * Math.max(0, eng.climbMeters[edgeId]) +
@@ -209,7 +217,8 @@ interface ElevationFile {
   elevDm: number[];
 }
 
-let engine: RoutingEngine | null = null;
+// Built on first use, per region: a rider in one city never pays for another's.
+const engines = new Map<RegionId, RoutingEngine>();
 
 /**
  * Loads a trained model artifact if one has been committed, else falls back
@@ -220,9 +229,7 @@ let engine: RoutingEngine | null = null;
  * throws - see the note in `lib/scoring/artifact.ts` on why a silent
  * fallback there would be the worst of both worlds.
  */
-const ARTIFACT_PATH = path.join(process.cwd(), "lib", "data", "model", "safety-model.json");
-
-function loadModel(graph: BikeGraph): { model: SafetyModel; source: "trained" | "baseline" } {
+function loadModel(graph: BikeGraph, artifactPath: string): { model: SafetyModel; source: "trained" | "baseline" } {
   // Read from disk rather than `import` the JSON: a static import of a file
   // that does not exist yet is a hard build failure, and "nothing has been
   // trained yet" has to be a working state. Reading at runtime also means
@@ -232,7 +239,7 @@ function loadModel(graph: BikeGraph): { model: SafetyModel; source: "trained" | 
   // in the browser bundle.
   let artifact: unknown;
   try {
-    artifact = JSON.parse(readFileSync(ARTIFACT_PATH, "utf8"));
+    artifact = JSON.parse(readFileSync(artifactPath, "utf8"));
   } catch {
     return { model: createBaselineModel(), source: "baseline" };
   }
@@ -243,19 +250,21 @@ function loadModel(graph: BikeGraph): { model: SafetyModel; source: "trained" | 
   return { model, source: "trained" };
 }
 
-export function getRoutingEngine(): RoutingEngine {
-  if (engine) return engine;
+export function getRoutingEngine(region: RegionId = DEFAULT_REGION): RoutingEngine {
+  const built = engines.get(region);
+  if (built) return built;
 
-  const graph = decodeGraph(rawGraph as Parameters<typeof decodeGraph>[0]);
+  const data = loadRegionData(region);
+  const graph = decodeGraph(data.rawGraph as Parameters<typeof decodeGraph>[0]);
 
   // Must run BEFORE features are extracted: `laneProtection` and
   // `isCycleway` read `edge.tier`, so correcting tiers afterwards would
   // leave every score computed from the wrong infrastructure.
-  const laneMatch = applySfmtaLaneTiers(graph.edges, graph.nodes, REAL_SF_BIKE_LANES);
+  const laneMatch = applyLaneTiers(graph.edges, graph.nodes, data.lanes, { strict: data.strictLaneMatch });
 
-  const { model, source } = loadModel(graph);
+  const { model, source } = loadModel(graph, data.artifactPath);
 
-  const ctx = buildFeatureContext(REAL_SF_BIKE_CRASHES, REAL_SF_HIGHWAYS, graph.nodes);
+  const ctx = buildFeatureContext(data.crashes, data.highways, graph.nodes, data.neighborhoods);
   const scores = new Float32Array(graph.edges.length);
 
   // Both directions of a two-way street share identical features, so score
@@ -269,11 +278,10 @@ export function getRoutingEngine(): RoutingEngine {
       scores[edge.id] = cached;
       continue;
     }
-    const features = extractFeatures(edge, ctx);
-    const s =
-      model instanceof PrecomputedScoreModel
-        ? model.scoreByEdgeId(edge.id, features)
-        : model.score(features);
+    // A trained table already holds the answer, and measuring every street's
+    // distance to every freeway was most of a 23s cold start on San José's graph.
+    const stored = model instanceof PrecomputedScoreModel ? model.storedScore(edge.id) : null;
+    const s = stored ?? model.score(extractFeatures(edge, ctx));
     scores[edge.id] = s;
     seen.set(key, s);
   }
@@ -295,7 +303,10 @@ export function getRoutingEngine(): RoutingEngine {
   // 52 hotspot circles the router knew nothing about as areas: Marina ->
   // Daly City on "Safest + bike lanes" avoided all 17 flagged areas yet
   // crossed 9 hotspots, which on the map looked like ignoring danger.
-  const hotspots = computeCompositeDangerZones(REAL_SF_BIKE_CRASHES, REAL_SF_BIKE_LANES, REAL_SF_HIGHWAYS);
+  // Hotspots are crash clusters, so without crash data there are none.
+  const hotspots = data.crashes.length
+    ? computeCompositeDangerZones(data.crashes, data.lanes, data.highways)
+    : [];
   const edgeHotspot = new Int16Array(graph.edges.length).fill(-1);
   for (const edge of graph.edges) {
     const a = graph.nodes[edge.from];
@@ -311,7 +322,7 @@ export function getRoutingEngine(): RoutingEngine {
   // array lookup inside the A* inner loop rather than a geometry test.
   const inFlaggedArea = new Uint8Array(graph.edges.length);
   const areaMask = new Uint32Array(graph.edges.length);
-  if (SF_DANGEROUS_NEIGHBORHOODS.length > 32) throw new Error("areaMask holds at most 32 flagged areas.");
+  if (data.neighborhoods.length > 32) throw new Error("areaMask holds at most 32 flagged areas.");
   for (const edge of graph.edges) {
     const a = graph.nodes[edge.from];
     const b = graph.nodes[edge.to];
@@ -324,7 +335,7 @@ export function getRoutingEngine(): RoutingEngine {
   // ELEVATION. Heights are per node index, which is positional, so a
   // regenerated graph would silently pair streets with the wrong heights.
   // Refuse rather than mis-route - same rule as the model artifact.
-  const elev = rawElevation as ElevationFile;
+  const elev = data.elevation as ElevationFile;
   if (elev.graphGeneratedAt !== graph.generatedAt || elev.nodeCount !== graph.nodes.length) {
     throw new Error(
       `Elevation data was sampled for a different graph (${elev.graphGeneratedAt}, ` +
@@ -352,10 +363,10 @@ export function getRoutingEngine(): RoutingEngine {
     // never penalised however it is named.
     let sev: SteepSeverity | null = null;
     if (grade >= STEEP_GRADE_THRESHOLD) {
-      const byStreet = edge.name ? SF_STEEP_STREETS[edge.name] : undefined;
+      const byStreet = edge.name ? data.steepStreets[edge.name] : undefined;
       const a = graph.nodes[edge.from];
       const b = graph.nodes[edge.to];
-      const area = steepAreaAt({ lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 }, SF_STEEP_AREAS);
+      const area = steepAreaAt({ lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 }, data.steepAreas);
       const candidates = [byStreet, area?.severity].filter(Boolean) as SteepSeverity[];
       for (const c of candidates) {
         if (!sev || SEVERITY_MULTIPLIER[c] > SEVERITY_MULTIPLIER[sev]) sev = c;
@@ -372,7 +383,7 @@ export function getRoutingEngine(): RoutingEngine {
 
   // TRAFFIC SIGNALS -> intersections. A coarse grid of nodes makes the
   // radius search cheap for 1,300 signals against 112k nodes.
-  const signals = (rawSignals as { signals: { lat: number; lng: number }[] }).signals;
+  const signals = data.signals;
   const CELL = 0.0006; // ~60m
   const nodeGrid = new Map<string, number[]>();
   graph.nodes.forEach((p, i) => {
@@ -405,7 +416,8 @@ export function getRoutingEngine(): RoutingEngine {
 
   const nodeElevation = Float32Array.from(elev.elevDm, (dm) => dm / 10);
 
-  engine = {
+  const engine: RoutingEngine = {
+    region,
     graph,
     nodeElevation,
     signalAtNode,
@@ -424,17 +436,38 @@ export function getRoutingEngine(): RoutingEngine {
     scores,
     model,
     modelSource: source,
-    highwaySegmentCount: REAL_SF_HIGHWAYS.length,
-    crashCount: REAL_SF_BIKE_CRASHES.length,
-    crashSource: REAL_SF_BIKE_CRASHES[0]?.source ?? "none",
+    highwaySegmentCount: data.highways.length,
+    crashCount: data.crashes.length,
+    crashSource: data.crashes[0]?.source ?? "none",
     laneMatch,
   };
+  engines.set(region, engine);
   return engine;
 }
 
 /** Exposed so tests can force a rebuild after swapping fixtures. */
 export function resetRoutingEngine() {
-  engine = null;
+  engines.clear();
+}
+
+/**
+ * The region a trip belongs to, from its points. Each region is its own
+ * street graph, so a trip that spans two has no route yet; that gets a plain
+ * explanation rather than the misleading "not near any street" it would
+ * otherwise hit when snapping. Points outside every region are left for
+ * snapping to refuse, as they always have been.
+ */
+export function regionForTrip(points: LatLng[]): RegionId {
+  const found = new Set(points.map(regionAt).filter((r): r is RegionId => r !== null));
+  if (found.size > 1) {
+    const names = [...found].map((r) => REGIONS[r].name).join(" and ");
+    throw new RoutingError(`Routes can't cross between ${names} yet. Keep the whole trip in one area.`);
+  }
+  return found.values().next().value ?? DEFAULT_REGION;
+}
+
+export function engineForTrip(points: LatLng[]): RoutingEngine {
+  return getRoutingEngine(regionForTrip(points));
 }
 
 export interface RouteSummary {
@@ -475,6 +508,10 @@ export interface RouteSummary {
   }[];
   /** Crash hotspots ridden through, not counting any the trip starts or ends in. */
   crashHotspots: { entered: number; meters: number };
+  /** Set in regions without crash or flagged-area data, so the UI claims nothing about them. */
+  noSafetyData?: boolean;
+  /** Riding beside a freeway the route could not avoid. Always 0 where it is not mapped (SF). */
+  metersAlongFreeway: number;
   /**
    * Set when a safer profile went through High/Elevated areas on purpose
    * because staying out of all of them broke AREA_DETOUR_LIMIT.
@@ -697,7 +734,7 @@ export function areaPolicy(
   };
 }
 
-function detourWarningFor(routeMeters: number, baselineMeters: number): RouteSummary["detourWarning"] {
+function detourWarningFor(routeMeters: number, baselineMeters: number, hasSafetyData = true): RouteSummary["detourWarning"] {
   if (!(baselineMeters > 0 && routeMeters > baselineMeters * (1 + DETOUR_WARN_THRESHOLD))) return null;
   const extra = routeMeters - baselineMeters;
   return {
@@ -705,7 +742,7 @@ function detourWarningFor(routeMeters: number, baselineMeters: number): RouteSum
     extraMeters: Math.round(extra),
     message: `This route is ${Math.round((extra / baselineMeters) * 100)}% longer than the fastest route (${(
       extra / 1609.34
-    ).toFixed(1)} mi further) to stay clear of flagged areas and keep to protected lanes.`,
+    ).toFixed(1)} mi further) ${hasSafetyData ? "to stay clear of flagged areas and keep to protected lanes" : "to keep to protected lanes and calmer streets"}.`,
   };
 }
 
@@ -742,6 +779,7 @@ function summarize(
     endpointHotspots?: Set<number>;
   } | null = null
 ): RouteSummary {
+  const hasSafetyData = REGIONS[regionAt(route.path[0]) ?? DEFAULT_REGION].safetyData;
   const tierBreakdown: Record<BikeLaneTier, number> = {
     fullyProtected: 0,
     semiProtected: 0,
@@ -958,8 +996,12 @@ function summarize(
           ...route.edges.map((e) => elevation.nodeElevation![e.to]),
         ].map((m) => Math.round(m * 10) / 10)
       : [],
-    detourWarning: detourWarningFor(route.distanceMeters, baselineMeters),
+    detourWarning: detourWarningFor(route.distanceMeters, baselineMeters, hasSafetyData),
     estimatedSeconds: Math.round(estimateSeconds(route.distanceMeters, gain, signalsSeen.size)),
+    ...(hasSafetyData ? {} : { noSafetyData: true }),
+    metersAlongFreeway: Math.round(
+      route.edges.reduce((m, e) => m + (e.alongFreeway ? e.lengthMeters : 0), 0)
+    ),
     crashHotspots: (() => {
       const hs = elevation?.edgeHotspot;
       if (!hs) return { entered: 0, meters: 0 };
@@ -1043,17 +1085,20 @@ export function planRoutes(
 ): RouteSummary[] {
   const avoidElevation = options.avoidElevation ?? false;
   const fewerSignals = options.fewerSignals ?? false;
-  const eng = getRoutingEngine();
+  const eng = engineForTrip([origin, destination]);
 
   // Snap to nodes that can actually serve as an origin and a destination.
   // Nearest-node alone is not enough: one-way stubs exist with in-degree
   // or out-degree 0, and landing on one makes the search unsolvable no
   // matter how well connected the rest of the city is.
-  const startNode = eng.index.nearest(origin, 2000, (i) => eng.outDegree[i] > 0);
+  // Taking expressways out of a graph strands the few driveways reached only from
+  // them, so these regions snap only to streets that connect to the network.
+  const reachable = (i: number) => REGIONS[eng.region].safetyData || eng.inMainNetwork[i] === 1;
+  const startNode = eng.index.nearest(origin, 2000, (i) => eng.outDegree[i] > 0 && reachable(i));
   if (startNode === null) {
     throw new RoutingError("Start point is not near any bike-routable street in the covered area.");
   }
-  const goalNode = eng.index.nearest(destination, 2000, (i) => eng.inDegree[i] > 0);
+  const goalNode = eng.index.nearest(destination, 2000, (i) => eng.inDegree[i] > 0 && reachable(i));
   if (goalNode === null) {
     throw new RoutingError(
       "Destination is not near any bike-routable street in the covered area."
@@ -1099,7 +1144,8 @@ export function planRoutes(
         extraPenalty: (edgeId: number) =>
           (extraPenalty ? extraPenalty(edgeId) : 0) +
           (p.avoidFlaggedAreas ? policy.penalty(edgeId) : 0) +
-          (p.id === "fastest" ? timePenaltyMeters(eng, edgeId) : 0),
+          (p.id === "fastest" ? timePenaltyMeters(eng, edgeId) : 0) +
+          freewaySidePenalty(eng, edgeId),
       });
     };
 
@@ -1285,7 +1331,7 @@ function enforceSafetyOrdering(routes: RouteSummary[]): RouteSummary[] {
       // Detours are measured against Fastest, which just changed.
       for (const id of ["balanced", "safest"] as const) {
         const r = byProfile.get(id);
-        if (r) byProfile.set(id, { ...r, detourWarning: detourWarningFor(r.distanceMeters, adopted.distanceMeters) });
+        if (r) byProfile.set(id, { ...r, detourWarning: detourWarningFor(r.distanceMeters, adopted.distanceMeters, !r.noSafetyData) });
       }
     }
   }
@@ -1338,9 +1384,10 @@ export function planCustomPath(
   }
   const avoidElevation = options.avoidElevation ?? false;
   const fewerSignals = options.fewerSignals ?? false;
-  const eng = getRoutingEngine();
+  const eng = engineForTrip([origin, destination, ...waypoints]);
   const profile = ROUTE_PROFILES[profileId];
 
+  const reachable = (i: number) => REGIONS[eng.region].safetyData || eng.inMainNetwork[i] === 1;
   // Stops are passed THROUGH, so they need a way in and a way out.
   const snap = (p: LatLng, accept: (i: number) => boolean, what: string) => {
     const n = eng.index.nearest(p, 2000, accept);
@@ -1348,9 +1395,9 @@ export function planCustomPath(
     return n;
   };
   const stops = [
-    snap(origin, (i) => eng.outDegree[i] > 0, "Start point"),
+    snap(origin, (i) => eng.outDegree[i] > 0 && reachable(i), "Start point"),
     ...waypoints.map((w, k) => snap(w, (i) => eng.inMainNetwork[i] === 1, `Stop ${k + 1}`)),
-    snap(destination, (i) => eng.inDegree[i] > 0, "Destination"),
+    snap(destination, (i) => eng.inDegree[i] > 0 && reachable(i), "Destination"),
   ].filter((n, i, all) => i === 0 || n !== all[i - 1]); // two clicks on one corner are one stop
   if (stops.length < 2) throw new RoutingError("Start and destination resolve to the same point.");
 
@@ -1474,7 +1521,7 @@ export function summarizeCustom(
 ): RouteSummary {
   const avoidElevation = options.avoidElevation ?? false;
   const fewerSignals = options.fewerSignals ?? false;
-  const eng = getRoutingEngine();
+  const eng = engineForTrip(plan.path.path.slice(0, 1));
   const profile = ROUTE_PROFILES[profileId];
   const { path: joined, bestEffort, stops } = plan;
   // Same penalties as the stock fastest route, so the detour warning and
@@ -1484,7 +1531,8 @@ export function summarizeCustom(
       extraPenalty: (edgeId: number) =>
         (avoidElevation ? eng.elevationPenalty[edgeId] : 0) +
         (fewerSignals && edgeEntersSignal(eng, edgeId) ? SIGNAL_COST_METERS : 0) +
-        timePenaltyMeters(eng, edgeId),
+        timePenaltyMeters(eng, edgeId) +
+        freewaySidePenalty(eng, edgeId),
     });
 
   // Avoidance claims and the detour warning are measured against the plain
@@ -1595,8 +1643,26 @@ function mainNetwork(graph: BikeGraph): Uint8Array {
 }
 
 
-let nodesByPosition: Map<string, number[]> | null = null;
-let outEdgesOf: number[][] | null = null;
+// Per engine: node positions and edge lists belong to one region's graph.
+const pathLookups = new WeakMap<RoutingEngine, { nodesByPosition: Map<string, number[]>; outEdgesOf: number[][] }>();
+
+function pathLookupFor(eng: RoutingEngine) {
+  let lookup = pathLookups.get(eng);
+  if (!lookup) {
+    const nodesByPosition = new Map<string, number[]>();
+    eng.graph.nodes.forEach((n, i) => {
+      const k = `${n.lat},${n.lng}`;
+      const list = nodesByPosition.get(k);
+      if (list) list.push(i);
+      else nodesByPosition.set(k, [i]);
+    });
+    const outEdgesOf: number[][] = Array.from({ length: eng.graph.nodes.length }, () => []);
+    for (const e of eng.graph.edges) outEdgesOf[e.from].push(e.id);
+    lookup = { nodesByPosition, outEdgesOf };
+    pathLookups.set(eng, lookup);
+  }
+  return lookup;
+}
 
 /**
  * Rebuilds the graph route behind a path the browser is showing. Every
@@ -1611,30 +1677,20 @@ let outEdgesOf: number[][] | null = null;
  * is resolved by which candidates are actually joined by an edge.
  */
 export function routePathFromLatLngs(path: LatLng[]): RoutePath | null {
-  const eng = getRoutingEngine();
-  if (!nodesByPosition || !outEdgesOf) {
-    nodesByPosition = new Map();
-    eng.graph.nodes.forEach((n, i) => {
-      const k = `${n.lat},${n.lng}`;
-      const list = nodesByPosition!.get(k);
-      if (list) list.push(i);
-      else nodesByPosition!.set(k, [i]);
-    });
-    outEdgesOf = Array.from({ length: eng.graph.nodes.length }, () => []);
-    for (const e of eng.graph.edges) outEdgesOf[e.from].push(e.id);
-  }
   if (path.length < 2) return null;
+  const eng = engineForTrip(path.slice(0, 1));
+  const { nodesByPosition, outEdgesOf } = pathLookupFor(eng);
   // Shortest edge from a to b, as A* would have taken.
   const edgeBetween = (a: number, b: number): GraphEdge | null => {
     let best: GraphEdge | null = null;
-    for (const id of outEdgesOf![a]) {
+    for (const id of outEdgesOf[a]) {
       const e = eng.graph.edges[id];
       if (e.to === b && (!best || e.lengthMeters < best.lengthMeters)) best = e;
     }
     return best;
   };
   // Forward pass: for every candidate at step i, the edge that reaches it.
-  const cands = path.map((p) => nodesByPosition!.get(`${p.lat},${p.lng}`) ?? []);
+  const cands = path.map((p) => nodesByPosition.get(`${p.lat},${p.lng}`) ?? []);
   if (cands.some((c) => c.length === 0)) return null;
   const reachedBy: Map<number, GraphEdge | null>[] = [new Map(cands[0].map((n) => [n, null]))];
   for (let i = 1; i < cands.length; i++) {
