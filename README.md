@@ -197,6 +197,24 @@ Browsers only share location with a **secure** page: `https://...`, or
 phone is *not* secure, and the browser refuses location without even asking.
 So give the dev server an https URL:
 
+**Easiest: `npm run phone` (same Wi-Fi, nothing to install)**
+
+```bash
+npm run phone
+```
+
+It makes a certificate for your Mac's Wi-Fi address (kept in `certificates/`,
+never committed), starts the app at `https://<your-mac-ip>:3443`, and prints a
+QR code: scan it with the phone's camera. It runs beside a normal `npm run dev`.
+The first time, the phone warns that the certificate is not trusted: on Android
+Chrome tap *Advanced → Proceed*; on iPhone Safari tap *Show Details → visit this
+website*. Then tap *Start navigation* and allow location.
+
+If an iPhone still will not share location, trust the certificate once:
+AirDrop `certificates/phone-ca.crt` to the phone, then *Settings → Profile
+Downloaded → Install*, then *Settings → General → About → Certificate Trust
+Settings* and switch on *BetterRoutes local dev CA*.
+
 **Option A: tunnel (recommended; works on iPhone and Android, no warnings)**
 
 ```bash

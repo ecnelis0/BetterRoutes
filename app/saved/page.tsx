@@ -97,8 +97,8 @@ function Saved() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1">
-      <aside className="flex w-[26rem] shrink-0 flex-col gap-3 overflow-y-auto border-r border-slate-200 bg-white p-4 text-black">
+    <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+      <aside className="flex min-h-0 w-full flex-1 flex-col gap-3 overflow-y-auto border-t border-slate-200 bg-white p-4 text-black md:w-[26rem] md:flex-none md:shrink-0 md:border-r md:border-t-0">
         {open ? (
           <Detail
             key={open.id}
@@ -117,7 +117,7 @@ function Saved() {
         )}
       </aside>
 
-      <main className="relative min-h-0 flex-1">
+      <main className="relative order-first h-[45dvh] min-h-0 flex-none md:order-none md:h-auto md:flex-1">
         <MapView
           center={open?.from.point ?? REGIONS[DEFAULT_REGION].center}
           isLoaded={isLoaded}

@@ -19,7 +19,8 @@
     "data:fetch-pois": "node scripts/fetchSfPois.mjs",
     "data:import-crashes": "node scripts/importSfBikeCrashes.mjs",
     "data:import-signals": "node scripts/importTrafficSignals.mjs",
-    "data:san-jose": "node scripts/fetchSfBikeGraph.mjs --region=sanjose && node scripts/fetchSfElevation.mjs --region=sanjose && node scripts/importSanJoseData.mjs && node scripts/fetchSfPois.mjs --region=sanjose"
+    "data:san-jose": "node scripts/fetchSfBikeGraph.mjs --region=sanjose && node scripts/fetchSfElevation.mjs --region=sanjose && node scripts/importSanJoseData.mjs && node scripts/fetchSfPois.mjs --region=sanjose",
+    "phone": "npm run prepare-assets && node scripts/phone.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.89",
@@ -42,6 +43,7 @@
     "eslint-config-next": "16.2.12",
     "playwright": "^1.63.0",
     "pngjs": "^7.0.0",
+    "qrcode-terminal": "^0.12.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",

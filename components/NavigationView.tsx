@@ -517,7 +517,9 @@ export default function NavigationView({
 
   return (
     <div
-      className="absolute inset-0 z-30 bg-slate-900"
+      // fixed on a phone: the map there is only the top of the screen, and
+      // riding needs all of it. Beside the desktop panel it fills the map area.
+      className="fixed inset-0 z-50 bg-slate-900 md:absolute md:z-30"
       data-testid="navigation-view"
     >
       {/* h-full w-full, not absolute inset-0: maplibre-gl.css sets .maplibregl-map to position: relative, which cancels the inset and leaves a 0px-tall map. */}

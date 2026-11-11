@@ -39,9 +39,20 @@ describe("app shell layout", () => {
     const page = read("app/page.tsx");
     // The row, the sidebar and the map pane all need it; one missing is
     // enough to reintroduce the overflow.
-    expect(page, "flex row").toMatch(/<div className="flex min-h-0 flex-1 overflow-hidden"/);
+    expect(page, "flex row").toMatch(/<div className="flex min-h-0 flex-1 [^"]*\boverflow-hidden\b/);
     expect(page, "sidebar").toMatch(/<aside className="[^"]*\bmin-h-0\b[^"]*\boverflow-y-auto\b/);
     expect(page, "map pane").toMatch(/<main className="[^"]*\bmin-h-0\b/);
+  });
+
+  it("on a phone stacks the map over the panel, and navigation takes the whole screen", () => {
+    // Side by side, a 320px panel left a phone's map a sliver beside it.
+    for (const file of ["app/page.tsx", "app/saved/page.tsx"]) {
+      const page = read(file);
+      expect(page, `${file} row`).toMatch(/<div className="flex min-h-0 flex-1 flex-col [^"]*\bmd:flex-row\b/);
+      expect(page, `${file} panel`).toMatch(/<aside className="[^"]*\bw-full\b[^"]*\bmd:w-/);
+      expect(page, `${file} map`).toMatch(/<main className="[^"]*\border-first\b[^"]*\bh-\[45dvh\][^"]*\bmd:flex-1\b/);
+    }
+    expect(read("components/NavigationView.tsx")).toMatch(/className="fixed inset-0 [^"]*\bmd:absolute\b/);
   });
 
   it("keeps the sidebar scrollable rather than clipping it", () => {

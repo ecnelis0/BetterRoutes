@@ -1093,8 +1093,10 @@ export default function Home() {
     // min-height:auto, which means they refuse to shrink below their
     // content - so `overflow-y-auto` on the sidebar never engaged and a
     // long route panel stretched the whole row instead of scrolling.
-    <div className="flex min-h-0 flex-1 overflow-hidden">
-      <aside className="flex min-h-0 w-80 flex-shrink-0 flex-col gap-4 overflow-y-auto border-r border-slate-200 bg-white p-4">
+    // On a phone (below md) the map sits on top and the panel scrolls under
+    // it; side by side, a 320px panel left a phone's map a sliver.
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
+      <aside className="flex min-h-0 w-full flex-1 flex-col gap-4 overflow-y-auto border-t border-slate-200 bg-white p-4 md:w-80 md:flex-none md:flex-shrink-0 md:border-r md:border-t-0">
         <div>
           <h1 className="text-lg font-bold text-black">🚲 Safe Route</h1>
           <select
@@ -1819,7 +1821,7 @@ export default function Home() {
       </aside>
 
       {/* relative so the 3D tour overlay can position against the map area */}
-      <main className="relative min-h-0 flex-1">
+      <main className="relative order-first h-[45dvh] min-h-0 flex-none md:order-none md:h-auto md:flex-1">
         <MapView
           center={region.center}
           isLoaded={isLoaded}
