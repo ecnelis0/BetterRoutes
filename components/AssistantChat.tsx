@@ -86,7 +86,7 @@ export default function AssistantChat({
               {turns.map((t, i) => (
                 <div
                   key={i}
-                  className={`rounded-lg px-2.5 py-1.5 text-xs leading-snug ${
+                  className={`rounded-lg px-2.5 py-1.5 text-xs leading-snug whitespace-pre-line ${
                     t.role === "user" ? "self-end bg-violet-700 text-white" : "self-start bg-white text-black shadow-sm"
                   }`}
                 >

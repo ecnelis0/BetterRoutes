@@ -1,9 +1,11 @@
 import { generateText, isStepCount, tool, type LanguageModel } from "ai";
 import { z } from "zod";
-import { DEFAULT_REGION, REGIONS } from "../data/regions";
+import { DEFAULT_REGION, regionAt, REGIONS } from "../data/regions";
 import { geocode } from "../geocode";
 import { emojiFor, INTERESTS, type InterestId, type PlaceInterest } from "../interests/catalog";
 import { nearestPlace } from "../interests/planner";
+import { RIDE_IDEAS, RIDE_TAGS, type Difficulty, type Surface } from "../rides/rideIdeas";
+import { DEFAULT_HOME, suggestRides, writeUp, type Reach } from "../rides/suggest";
 import type { LatLng } from "../types";
 import type { AssistantAction, AssistantContext, ChatMessage, ForYouStop } from "./actions";
 
@@ -39,6 +41,13 @@ export function systemPrompt(ctx: AssistantContext): string {
       .map((i) => `${i.id} (${i.label})`)
       .join(", ")}.`,
     "- To make the route go somewhere specific ('via Ocean Beach', 'past the Ferry Building'), use add_stop.",
+    "",
+    "Ride ideas: when the rider asks where to ride, for a ride they would like, or what is worth riding (near or far),",
+    "call suggest_rides with what they said they like. Recommend only rides it returns - never invent one. Reply with one",
+    "short sentence, then the writeUp of the 1-3 that suit them best, copied exactly, separated by blank lines. Plain text:",
+    "no markdown. When the rider wants one mapped, call map_ride with its name; never offer to map a ride without canPlanHere.",
+    "Asking for ideas changes nothing on screen: call no other tool unless the rider also asked for that change. Leave",
+    "suggest_rides' 'from' out unless the rider said where they set out from.",
     "",
     "The options and settings are ways to CHOOSE a route. Once the rider has confirmed one ('myRoute' below is not null),",
     "it is THEIR route: requests change that route. Use add_stop / remove_stop for where it goes, set_settings to re-plan",
@@ -90,6 +99,9 @@ export async function runAssistant(
     }
     return from && to ? [from, to] : null;
   };
+
+  /** Rides suggest_rides offered in this reply, best first, for completing a reply that left their plans out. */
+  let suggested: { name: string; writeUp: string }[] = [];
 
   const result = await generateText({
     model,
@@ -218,6 +230,67 @@ export async function runAssistant(
           return { ok: true, stops: out.map((s) => s.name), note: "The app plans it and reports its length, or that it could not." };
         },
       }),
+      suggest_rides: tool({
+        description: `Find researched rides (South Bay to San Francisco) that fit what the rider likes. Distance is measured from 'from', else ${DEFAULT_HOME.name}.`,
+        inputSchema: z.object({
+          from: z
+            .string()
+            .optional()
+            .describe(`ONLY if the rider named where they set out from. Otherwise omit it: distances are then from ${DEFAULT_HOME.name}, the rider's home`),
+          maxReach: z
+            .enum(["nearby", "short-drive", "day-trip", "far"])
+            .optional()
+            .describe("Furthest start: nearby = ride from home (<8 mi), short-drive (<20), day-trip (<40), far (San Francisco and beyond)"),
+          surfaces: z.array(z.enum(["paved-path", "road", "dirt"])).optional().describe("paved-path = car-free paved trail; dirt = mountain biking"),
+          maxDifficulty: z.enum(["easy", "moderate", "hard", "very-hard"]).optional(),
+          minDifficulty: z.enum(["easy", "moderate", "hard", "very-hard"]).optional().describe("For riders who want a real workout"),
+          maxMiles: z.number().positive().optional(),
+          likes: z.array(z.enum(RIDE_TAGS)).optional(),
+        }),
+        execute: async ({ from, maxReach, surfaces, maxDifficulty, minDifficulty, maxMiles, likes }) => {
+          const home = from ? await findPlace(from) : null;
+          if (from && !home) return { ok: false, error: `Could not find ${from} in ${regionName}; leave 'from' out to measure from ${DEFAULT_HOME.name}.` };
+          const here = ctx.region ?? DEFAULT_REGION;
+          const picks = suggestRides(
+            {
+              maxReach: maxReach as Reach | undefined,
+              surfaces: surfaces as Surface[] | undefined,
+              maxDifficulty: maxDifficulty as Difficulty | undefined,
+              minDifficulty: minDifficulty as Difficulty | undefined,
+              maxMiles,
+              likes,
+            },
+            home?.point ?? DEFAULT_HOME.point
+          );
+          if (!picks.length) return { ok: false, error: "No researched ride fits all of that; loosen one wish (distance, difficulty or surface)." };
+          return {
+            ok: true,
+            measuredFrom: home?.label ?? DEFAULT_HOME.name,
+            rides: (suggested = picks.map((p) => ({
+              name: p.ride.name,
+              matchesLikes: p.matched,
+              canPlanHere: p.routableIn === here,
+              writeUp: writeUp(p, home?.label.split(",")[0] ?? DEFAULT_HOME.name, here),
+            }))),
+          };
+        },
+      }),
+      map_ride: tool({
+        description:
+          "Put a ride from suggest_rides on the map: its start to its turnaround for trail rides, else the way from the rider's start to the ride's start.",
+        inputSchema: z.object({ ride: z.string().describe("The ride's name as suggest_rides gave it") }),
+        execute: async ({ ride: name }) => {
+          const ride = RIDE_IDEAS.find((r) => r.name.toLowerCase() === name.trim().toLowerCase());
+          if (!ride) return { ok: false, error: `No researched ride is called ${name}; use a name suggest_rides returned.` };
+          const at = regionAt(ride.start.point);
+          if (!at) return { ok: false, error: `${ride.name} is outside the areas the app has maps for; give its plan instead.` };
+          if (at !== (ctx.region ?? DEFAULT_REGION)) return { ok: false, error: `Switch the map to ${REGIONS[at].name} first.` };
+          const start = { label: ride.start.name, point: ride.start.point };
+          const end = ride.turnaround && regionAt(ride.turnaround.point) === at ? { label: ride.turnaround.name, point: ride.turnaround.point } : null;
+          actions.push(end ? { type: "set_trip", from: start, to: end } : { type: "set_trip", to: start });
+          return { ok: true, mapped: end ? `${start.label} to ${end.label}` : `the way to ${start.label}` };
+        },
+      }),
       show_places: tool({
         description: "Show or hide photos of places worth stopping at along the route.",
         inputSchema: z.object({ on: z.boolean() }),
@@ -228,5 +301,20 @@ export async function runAssistant(
       }),
     },
   });
-  return { reply: result.text.trim() || "Done.", actions };
+  return { reply: withRidePlans(result.text.trim(), suggested) || "Done.", actions };
+}
+
+/**
+ * The model is asked to copy each recommended ride's write-up, and sometimes
+ * names a ride without it. The plan is the point, so any ride the reply names
+ * whose write-up is missing gets it appended - and if the reply names none of
+ * them, the best match does.
+ */
+export function withRidePlans(reply: string, rides: { name: string; writeUp: string }[]): string {
+  if (!rides.length) return reply;
+  const missing = rides.filter((r) => !reply.includes(r.writeUp));
+  const named = missing.filter((r) => reply.toLowerCase().includes(r.name.toLowerCase().split(/ [(+-]/)[0]));
+  const shown = rides.some((r) => reply.includes(r.writeUp));
+  const add = named.length ? named : shown ? [] : rides.slice(0, 1);
+  return [reply, ...add.map((r) => r.writeUp)].filter(Boolean).join("\n\n");
 }

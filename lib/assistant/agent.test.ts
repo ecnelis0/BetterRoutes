@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { MockLanguageModelV4 } from "ai/test";
-import { runAssistant, systemPrompt } from "./agent";
+import { runAssistant, systemPrompt, withRidePlans } from "./agent";
 import { describeActions, type AssistantContext } from "./actions";
 import { haversineMeters } from "../geo";
 import { distanceToPath } from "../ui/geometry";
@@ -190,6 +190,139 @@ describe("route assistant", () => {
       expect(p).toContain("ONE call to");
       expect(p).toContain("Boba Guys");
       expect(p).not.toContain("37.8029843");
+    });
+  });
+
+
+  describe("ride ideas", () => {
+    /** Runs one suggest_rides call and returns what the tool told the model. */
+    async function suggest(input: object, context: AssistantContext = ctx) {
+      let toolOutput: unknown;
+      let turn = 0;
+      const model = new MockLanguageModelV4({
+        doGenerate: async (opts) => {
+          turn++;
+          if (turn === 1) {
+            return {
+              content: [{ type: "tool-call" as const, toolCallId: "c0", toolName: "suggest_rides", input: JSON.stringify(input) }],
+              finishReason: { unified: "tool-calls" as const, raw: undefined },
+              usage,
+              warnings: [],
+            };
+          }
+          const toolMsg = opts.prompt.find((m) => m.role === "tool");
+          const part = toolMsg?.content.find((c) => c.type === "tool-result");
+          toolOutput = part && "output" in part ? (part.output as { value: unknown }).value : undefined;
+          return { content: [{ type: "text" as const, text: "Here are some rides." }], finishReason: { unified: "stop" as const, raw: undefined }, usage, warnings: [] };
+        },
+      });
+      const out = await runAssistant(model, [{ role: "user", content: "where should I ride?" }], context);
+      return { out, result: toolOutput as { ok: boolean; error?: string; measuredFrom?: string; rides?: { name: string; canPlanHere: boolean; writeUp: string }[] } };
+    }
+
+    it("hands the model only researched rides that fit, with why and a plan, and changes nothing", async () => {
+      const { out, result } = await suggest({ maxReach: "nearby", surfaces: ["paved-path"], likes: ["family"] });
+      expect(out.actions).toEqual([]);
+      expect(result.ok).toBe(true);
+      expect(result.measuredFrom).toMatch(/Evergreen/);
+      expect(result.rides!.length).toBeGreaterThan(0);
+      for (const r of result.rides!) {
+        expect(r.writeUp).toMatch(/car-free paved path/);
+        expect(r.writeUp).toMatch(/\nWhy: .{20,}\nPlan: .{20,}/);
+      }
+      expect(result.rides!.map((r) => r.name)).toContain("Coyote Creek Trail");
+    });
+
+    it("says which rides the app can plan: SF rides here in SF, after switching from San José, coast rides nowhere yet", async () => {
+      const inSf = new Map((await suggest({ likes: ["coast"] })).result.rides!.map((r) => [r.name, r]));
+      expect(inSf.get("Golden Gate Bridge to Sausalito (ferry back)")!.canPlanHere).toBe(true);
+      expect(inSf.get("Golden Gate Bridge to Sausalito (ferry back)")!.writeUp).toMatch(/ask and I will map it, Aquatic Park, San Francisco to Golden Gate Bridge Welcome Center\.$/);
+      expect(inSf.get("Tunitas Creek + coast loop")!.canPlanHere).toBe(false);
+      expect(inSf.get("Tunitas Creek + coast loop")!.writeUp).toMatch(/no maps there yet/);
+      const fromSj = (await suggest({ likes: ["coast"] }, { ...ctx, region: "sanjose" })).result.rides!;
+      const ggb = fromSj.find((r) => r.name.startsWith("Golden Gate Bridge"))!;
+      expect(ggb.canPlanHere).toBe(false);
+      expect(ggb.writeUp).toMatch(/switch the map to San Francisco/);
+    });
+
+    it("measures from a place the rider names, and refuses one it cannot find", async () => {
+      const { result } = await suggest({ from: "Chinatown", maxReach: "nearby" });
+      expect(result.measuredFrom).toBe("Chinatown, San Francisco");
+      for (const r of result.rides!) expect(r.writeUp).toMatch(/from Chinatown as the crow flies/);
+      expect(result.rides!.map((r) => r.name)).not.toContain("Coyote Creek Trail");
+      const lost = await suggest({ from: "Atlantis" });
+      expect(lost.result).toMatchObject({ ok: false });
+    });
+
+    it("says so when nothing fits instead of stretching the wishes", async () => {
+      const { result } = await suggest({ maxReach: "nearby", minDifficulty: "very-hard", surfaces: ["dirt"] });
+      expect(result).toMatchObject({ ok: false });
+    });
+
+    it("adds the plan of any ride the reply names but did not write up, and never a second copy", () => {
+      const rides = [
+        { name: "Coyote Creek Trail", writeUp: "Coyote Creek Trail - South San José\nPlan: A" },
+        { name: "Bay Trail: Shoreline Park to Palo Alto Baylands", writeUp: "Bay Trail: Shoreline...\nPlan: B" },
+        { name: "Old La Honda + Kings Mountain loop", writeUp: "Old La Honda...\nPlan: C" },
+      ];
+      expect(withRidePlans("Try the bay trail: shoreline park to palo alto baylands.", rides)).toBe(
+        "Try the bay trail: shoreline park to palo alto baylands.\n\nBay Trail: Shoreline...\nPlan: B"
+      );
+      // Named by its short name only.
+      expect(withRidePlans("Old La Honda is the one.", rides)).toContain("Plan: C");
+      const complete = `Two picks.\n\n${rides[0].writeUp}\n\n${rides[2].writeUp}`;
+      expect(withRidePlans(complete, rides)).toBe(complete);
+      expect(withRidePlans("Here is a good one for you.", rides)).toContain("Plan: A");
+      expect(withRidePlans("Moved your start.", [])).toBe("Moved your start.");
+    });
+
+    it("completes the live reply too: a reply naming a ride gets its plan", async () => {
+      let turn = 0;
+      const model = new MockLanguageModelV4({
+        doGenerate: async () => {
+          turn++;
+          if (turn === 1) {
+            return {
+              content: [{ type: "tool-call" as const, toolCallId: "c0", toolName: "suggest_rides", input: JSON.stringify({ maxReach: "nearby", surfaces: ["paved-path"] }) }],
+              finishReason: { unified: "tool-calls" as const, raw: undefined },
+              usage,
+              warnings: [],
+            };
+          }
+          return { content: [{ type: "text" as const, text: "Coyote Creek Trail is your ride." }], finishReason: { unified: "stop" as const, raw: undefined }, usage, warnings: [] };
+        },
+      });
+      const out = await runAssistant(model, [{ role: "user", content: "easy ride near me" }], { ...ctx, region: "sanjose" });
+      expect(out.reply).toMatch(/^Coyote Creek Trail is your ride\.\n\nCoyote Creek Trail - South San José \/ Coyote Valley\n/);
+      expect(out.reply).toContain("Plan: From Hellyer Park");
+      expect(out.reply).toContain("ask and I will map it, Hellyer County Park to Metcalf Park.");
+    });
+
+    it("maps a researched ride by name: trails start to turnaround, only in the region on screen", async () => {
+      const call = (ride: string, context: AssistantContext = ctx) =>
+        runAssistant(scripted([{ toolName: "map_ride", input: { ride } }], "Mapped."), [{ role: "user", content: `map ${ride}` }], context);
+      expect((await call("Embarcadero → Crissy Field waterfront")).actions).toEqual([
+        {
+          type: "set_trip",
+          from: { label: "Caltrain 4th & King, San Francisco", point: { lat: 37.7766, lng: -122.3947 } },
+          to: { label: "Crissy Field", point: { lat: 37.8035, lng: -122.465 } },
+        },
+      ]);
+      // A climb has no turnaround on the street graph: map the way to its start.
+      const sierra = (await call("sierra road climb", { ...ctx, region: "sanjose" })).actions;
+      expect(sierra).toEqual([{ type: "set_trip", to: { label: "Sierra Rd at Piedmont Rd", point: { lat: 37.4011, lng: -121.8405 } } }]);
+      expect((await call("Coyote Creek Trail")).actions).toEqual([]); // in San José, map shows SF
+      expect((await call("Tunitas Creek + coast loop")).actions).toEqual([]);
+      expect((await call("Atlantis Loop")).actions).toEqual([]);
+    });
+
+    it("is told to recommend only what the tool returns, and when it may plan one", () => {
+      const p = systemPrompt(ctx);
+      expect(p).toContain("call suggest_rides");
+      expect(p).toContain("never invent one");
+      expect(p).toContain("never offer to map a ride without canPlanHere");
+      expect(p).toContain("no markdown");
+      expect(p).toContain("Asking for ideas changes nothing on screen");
     });
   });
 
